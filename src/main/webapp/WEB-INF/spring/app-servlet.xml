@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd">
+
+	<mvc:annotation-driven>
+		<mvc:argument-resolvers>
+			<bean class="kr.co.ducktube.web.resolver.LoginUserHandlerMethodArgumentResolver" />
+		</mvc:argument-resolvers>
+	</mvc:annotation-driven>
+	
+	<context:annotation-config />
+
+	<mvc:resources location="/resources/" mapping="/resources/**" />
+	<mvc:resources location="/js/" mapping="/js/**" />
+	
+	<mvc:interceptors>
+		<mvc:interceptor>
+			<mvc:mapping path="/**"/>
+			<!-- <mvc:exclude-mapping path="/resources/**"/> -->
+			<!-- <mvc:exclude-mapping path="/js/**"/> -->
+			<bean class="kr.co.ducktube.web.interceptor.LoginCheckInterceptor">
+				<property name="urls">
+					<set>  
+
+					</set>
+				</property>
+			</bean>
+		</mvc:interceptor>
+	</mvc:interceptors>
+
+	<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+		<property name="defaultEncoding" value="UTF-8" />
+		<property name="maxUploadSize" value="524288000" />
+	</bean>
+	
+	<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/WEB-INF/views/" />
+	</bean>
+
+	<context:component-scan base-package="kr.co.ducktube.web" />
+
+</beans>

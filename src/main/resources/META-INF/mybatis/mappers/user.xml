@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+ <mapper namespace="kr.co.ducktube.dao.UserDao">
+ 
+	<select id="getUserSequence" resultType="int">
+		select
+			users_seq.nextval
+		from
+			dual
+	</select>
+
+	<insert id="addNewUser" parameterType="User">
+		insert all
+			into 
+				users (user_no, user_email, user_name, user_nick, user_pwd, user_address, 
+						user_short_introduce, user_phone, user_gender, user_birthday, profile_big_img_url, profile_small_img_url)
+				values (#{sequence}, #{email}, #{name}, #{nick}, #{password}, #{address}, 
+						#{shortIntroduce}, #{phone}, #{gender}, #{birthday}, '\resources\temp\junsung\images\duckduckIcon.png', '\resources\temp\junsung\images\duckduckIcon.png')
+			into 
+				CHANNELS (owner_no, channel_title, channel_long_detail, channel_img_url)
+				values (#{sequence}, #{channelTitle}, #{channelLongDetail}, '\resources\temp\junsung\images\default_channel_img.jpg')
+			into
+				CREATOR_OPTIONS (user_no)
+				values (#{sequence})
+			into
+				CONVENIENT_OPTIONS (user_no)
+				values (#{sequence})
+			into
+				COMMUNITES (owner_no)
+				values (#{sequence})
+		select *
+		from dual
+	</insert>
+
+	<select id="getUserByConditions" parameterType="UserSearchConditions" resultType="User">
+		select
+			user_no					as no
+			, user_email			as email
+			, user_name				as name
+			, user_nick				as nick
+			, user_pwd				as password
+			, user_address			as address
+			, user_short_introduce	as shortIntroduce
+			, user_phone			as phone
+			, user_gender			as gender
+			, user_birthday			as birthday
+			, profile_big_img_url	as profileBigImgUrl
+			, profile_small_img_url as profileSmallImgUrl
+			<if test="condition != null and condition == '번호'">
+			,  (select
+					count(*)
+				from
+					users A, channels B, subscriptions C
+				where
+					A.user_no = B.OWNER_NO
+					and B.owner_no = C.OWNER_NO
+					and A.user_no = #{value}
+				group by
+					A.user_no) 		as subscriptionCount			
+			</if>
+		from
+			users
+		<if test="condition != null">
+			<choose>
+				<when test="condition == '닉네임'">
+					where user_nick = #{value}
+				</when>
+				<when test="condition == '이메일'">
+					where user_email = #{value}
+				</when>
+				<when test="condition == 'no'">
+					where user_no = #{value}
+				</when>
+			</choose>
+		</if>
+			
+	</select>
+ </mapper>

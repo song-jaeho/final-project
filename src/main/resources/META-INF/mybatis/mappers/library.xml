@@ -1,0 +1,591 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+ <mapper namespace="kr.co.ducktube.dao.LibraryDao">
+ 
+ 	<update id="writingDelete" parameterType="Integer">
+ 		{call
+ 			declare
+ 			begin
+ 				update cmw_comments 
+				set comment_status = 'disabled'
+				where writing_no = #{value};
+				
+				update cm_writings 
+				set writing_status = 'disabled'
+				where writing_no = #{value};
+ 			end}
+ 	</update>
+ 
+ 	<update id="writingCommentDelete" parameterType="Integer">
+ 		update cmw_comments 
+		set comment_status = 'disabled'
+		where comment_no = #{value}
+ 	</update>
+ 
+ 	<select id="getVideoByNo" parameterType="Integer" resultType="LibrarySummary">
+ 		select 
+ 			video_no as videoNo, 
+ 			preview_a3_url as previewA3Url
+		from video_meta
+		where video_no = #{value}
+ 	</select>
+ 
+ 	<delete id="commentsReplysRemove" parameterType="map">
+ 		<choose>
+ 			<when test="gubun=='vr'">
+ 				update vc_replies 
+				set reply_status = 'disabled'
+				where reply_no = #{commentNo}
+ 			</when>
+ 			<when test="gubun=='vc'">
+ 				{call
+		 			declare
+		 			begin
+		 				update vc_replies 
+						set reply_status = 'disabled'
+						where comment_no = #{commentNo};
+		 			
+		 				update video_comments 
+						set comment_status = 'disabled'
+						where comment_no = #{commentNo};
+		 			end}
+ 			</when>
+ 			<when test="gubun=='cr'">
+ 				update cmwc_replies 
+				set reply_status = 'disabled'
+				where reply_no = #{commentNo}
+ 			</when>
+ 			<when test="gubun=='cc'">
+				{call
+		 			declare
+		 			begin
+		 				update cmwc_replies 
+						set reply_status = 'disabled'
+						where comment_no = #{commentNo};
+		 			
+		 				update cmw_comments 
+						set comment_status = 'disabled'
+						where comment_no = #{commentNo};
+		 			end}
+ 			</when>
+ 		</choose>
+ 	</delete>
+ 
+ 	<update id="cvcrUpdate" parameterType="map" >
+ 		<choose>
+ 			<when test="gubun=='vc'">
+ 				update video_comments
+				set comment_contents = #{comment}, comment_status = 'enabled'
+				where comment_no = #{commentNo}
+ 			</when>
+ 			<when test="gubun=='vr'">
+ 				update vc_replies 
+				set reply_contents = #{comment}
+				where reply_no = #{commentNo}
+ 			</when>
+ 			<when test="gubun=='cc'">
+ 				update cmw_comments 
+				set comment_contents = #{comment}
+				where comment_no = #{commentNo}
+ 			</when>
+ 			<otherwise>
+ 				update cmwc_replies 
+				set reply_contents = #{comment}
+				where reply_no = #{commentNo}
+ 			</otherwise>
+ 		</choose>
+ 	</update>
+ 
+ 	<select id="getcvCommentsReplys" parameterType="LibraryCriteria" resultType="CommentReplySummary">
+ 		select 
+			user_no as userNo,
+			comment_no as commentNo, 
+			comment_contents as commentContent, 
+			create_date as createDate, 
+			videono as videoNo,
+			videotitle as videoTitle,
+			ctype as type,
+			rk as rank,
+			comment_status as commentStatus
+		from 
+			(
+			select 
+				user_no,
+				user_nick,
+				comment_no, 
+				comment_contents, 
+				create_date , 
+				videono,
+				videotitle,
+				ctype,
+				row_number() over(order by create_date desc) rk,
+				comment_status
+			from 
+				( select 
+					U.user_no, U.user_nick,
+					CMWC.comment_no, CMWC.comment_contents, CMWC.create_date, CMWC.comment_status,
+					1 as videono, 'noVideo1' as videotitle,
+					'cc' as ctype
+				from 
+					users U, 
+					cmw_comments CMWC
+				where 
+					U.user_no = #{userNo}
+					and U.user_no = CMWC.commenter_no
+					and CMWC.comment_status = 'enabled'
+				UNION ALL
+				select 
+					U.user_no, U.user_nick,
+					CMWCR.reply_no, CMWCR.reply_contents, CMWCR.create_date, CMWCR.reply_status,
+					2, 'noVideo2',
+					'cr'
+				from 
+					users U,
+					cmwc_replies CMWCR
+				where 
+					U.user_no = #{userNo}
+					and U.user_no = CMWCR.replier_no
+					and CMWCR.reply_status = 'enabled'
+				UNION ALL 
+				select 
+					U.user_no, U.user_nick,
+					VC.comment_no, VC.comment_contents, VC.create_date,VC.comment_status,
+					V.video_no, V.video_title ,
+					'vc'
+				from
+					users U,
+					video_comments VC,
+					videos V
+				where 
+					U.user_no = #{userNo}
+					and U.user_no = VC.commenter_no
+					and VC.video_no = V.video_no
+					and VC.comment_status = 'enabled'
+				UNION ALL 
+				select 
+					U.user_no, U.user_nick,
+					VCR.reply_no, VCR.reply_contents, VCR.create_date,VCR.reply_status,
+					V.video_no, V.video_title,
+					'vr'
+				from 
+					users U, 
+					vc_replies VCR,
+					video_comments VC,
+					videos V
+				where 
+					U.user_no = #{userNo}
+					and U.user_no = VCR.replier_no
+					and VC.comment_no = VCR.comment_no
+					and V.video_no = VC.video_no
+					and VCR.reply_status = 'enabled'
+					)
+			)
+			where 
+				rk &gt;= #{beginIndex} and rk &lt;= #{endIndex}
+ 	</select>
+ 	
+ 	<select id="getcmCommentByUserNo" parameterType="LibraryCriteria" resultType="LibraryCriteria">
+ 		select 
+ 			comment_no as cmCommentNo, 
+ 			writing_no as cmWritingNo, 
+ 			commenter_no as userNo
+		from cmw_comments
+		where writing_no = #{cmWritingNo} and commenter_no = #{userNo}
+ 	</select>
+ 	
+ 	<update id="updateCmComment" parameterType="LibraryCriteria">
+ 		update cmw_comments 
+		set comment_status = 'enabled', comment_contents = #{cmComment}, create_date = sysdate
+		where writing_no = #{cmWritingNo} and commenter_no = #{userNo}
+ 	</update>
+ 	
+ 	<insert id="insertCmComment" parameterType="LibraryCriteria">
+ 		insert into cmw_comments (comment_no, writing_no, commenter_no, comment_contents)
+		values(cmw_comments_seq.nextval, #{cmWritingNo}, #{userNo}, #{cmComment})
+ 	</insert>
+ 
+ 	<select id="getCommunityCommentList" parameterType="LibraryCriteria" resultType="LibrarySummary">
+ 		select 
+ 			CMW.writing_no as communityWritingNo, 
+ 			CMWC.commenter_no as masterNo,
+ 			CMWC.comment_no as commentNo, 
+ 			CMWC.comment_contents as commentContent, 
+			CMWC.create_date as createDate, 
+			CMWC.comment_status as commentStatus, 
+			M.user_nick as masterNick, 
+			M.profile_small_img_url as profile_small_img_url, 
+			CMWCVP.pcnt as commentGood,
+		    CMWCVN.ncnt as commentBad,
+		    U.user_no as userNo,
+		    CMWCV.side as side
+		from 
+			cmw_comments CMWC, 
+			cm_writings CMW, 
+			users M, 
+			(select comment_no, count(*) pcnt
+			from cmwc_vote_history
+			where side = 'p'
+			group by comment_no) CMWCVP,
+			(select comment_no, count(*) ncnt
+			from cmwc_vote_history 
+			where side = 'n'
+			group by comment_no) CMWCVN,
+			users U,(select user_no, comment_no, side
+					from cmwc_vote_history 
+					where user_no = #{userNo}) CMWCV
+		where 
+			CMW.writing_no = #{cmWritingNo} 
+			and CMWC.writing_no = CMW.writing_no 
+			and M.user_no = CMWC.commenter_no
+			and CMWC.comment_no = CMWCVP.comment_no(+)
+			and CMWCVN.comment_no(+) = CMWC.comment_no
+			and U.user_no = CMW.writer_no
+			and CMWCV.comment_no(+) = CMWC.comment_no
+			and CMWC.comment_status = 'enabled'
+		<choose>
+			<when test="cmSortValue != null">
+				order by CMWCVP.pcnt desc nulls last, CMWC.create_date desc
+			</when>
+			<otherwise>
+				order by CMWC.create_date desc
+			</otherwise>
+		</choose>
+ 	</select>
+ 
+ 	<select id="cmWritingContentUpdate" parameterType="LibraryCriteria">
+ 		update cm_writings 
+		set writing_contents = #{cmWritingContent}
+		where writing_no = #{cmWritingNo}
+ 	</select>
+ 
+ 	<insert id="insertWritingCommentSide" parameterType="map">
+ 		insert into cmwc_vote_history (user_no, comment_no, side)
+		values (#{userNo}, #{commentNo}, #{side})
+ 	</insert>
+ 
+ 	<update id="updateWritingCommentSide" parameterType="map">
+ 		update cmwc_vote_history 
+		set side = #{side}
+		where user_no = #{userNo} and comment_no = #{commentNo}
+ 	</update>
+ 
+ 	<delete id="deleteWritingCommentSide" parameterType="map">
+ 		delete from cmwc_vote_history 
+		where user_no = #{userNo} and comment_no = #{commentNo}
+ 	</delete>
+ 
+ 	<select id="getWritingCommentSide" parameterType="map" resultType="LibrarySummary">
+ 		select 
+ 			user_no as userNo, 
+ 			comment_no commentNo, 
+ 			side as side
+		from cmwc_vote_history 
+		where user_no = #{userNo} and comment_no = #{commentNo}
+ 	</select>
+ 
+ 	<select id="getCommunityList" parameterType="LibraryCriteria" resultType="LibrarySummary">
+ 		select user_nick, 
+ 			   writing_no as communityWritingNo, 
+ 			   writing_contents as communityContents, 
+ 			   writing_status as communityStatus, 
+ 			   create_date createDate, 
+ 			   pcnt communityGood, 
+ 			   ncnt communityBad, 
+ 			   ccnt communityCommentCount, 
+ 			   rk rank
+		from (select U.user_nick , CMW.writing_no, CMW.writing_contents, CMW.writing_status, CMW.create_date ,
+			     CMWV.pcnt, CMWN.ncnt, CMWC.ccnt, row_number() over(order by CMW.create_date desc) rk
+			  from 
+				 users U , 
+				 cm_writings CMW, 
+				 (select writing_no , count(*) pcnt
+				 from cmw_vote_history 
+				 where side = 'p'
+				 group by writing_no) CMWV, 
+				 (select writing_no , count(*) ncnt
+				 from cmw_vote_history 
+				 where side = 'n'
+				 group by writing_no) CMWN,
+				 (select writing_no , count(*) ccnt
+				 from cmw_comments 
+				 where comment_status = 'enabled'
+				 group by writing_no) CMWC
+		       where user_no = #{userNo} and U.user_no = CMW.writer_no and CMW.writing_no = CMWV.writing_no(+)
+					 and CMWN.writing_no(+) = CMW.writing_no and CMWC.writing_no(+) = CMW.writing_no and CMW.writing_status = 'enabled') 
+		where rk &gt;= #{beginIndex} and rk &lt;= #{endIndex}
+ 	</select>
+ 
+ 	<delete id="deleteAllHistory" parameterType="int">
+ 		delete from watch_history
+ 		where user_no = #{value}
+ 	</delete>
+ 
+ 	<delete id="deleteWatchHistory" parameterType="HomeCriteria"> 
+ 		delete from watch_history 
+		where user_no = #{userNo} and video_no = #{videoNo}
+ 	</delete>
+ 
+ 	<select id="getWatchCount" parameterType="LibraryCriteria" resultType="Integer">
+ 		select count(*)
+		from (select video_no , count(*) ct 
+			  from (select WH.user_no , V.video_no, V.video_title 
+					from videos V, watch_history WH  
+					where V.video_no = WH.video_no and WH.user_no = #{userNo} and V.video_title like '%'||#{keyword}||'%')
+			  group by video_no)
+ 	</select>
+ 
+ 	<select id="getWatchList" parameterType="LibraryCriteria" resultType="LibrarySummary">
+ 		select 
+ 			rk as rank, 
+ 			user_no as userNo, 
+ 			video_no as videoNo, 
+ 			mcday as createDate, 
+ 			video_title as title, 
+ 			views as videoCount, 
+ 			video_detail as videoDetail, 
+ 			video_duration as duration, 
+ 			preview_a3_url as previewA2Url,
+			masterno as masterNo, 
+			masternick as masterNick,
+			wlvideoNo as watchLaterNo
+		from (select row_number() over(order by mcday desc) rk , WH.user_no, WH.video_no, WH.mcday, 
+				 V.video_title, Vi.views, V.video_detail, 
+				 VM.video_duration, VM.preview_a3_url,
+				 M.user_no masterno, M.user_nick masternick,
+				 WL.video_no as wlvideoNo
+				from 
+					(select user_no , video_no, max(create_date ) mcday
+					 from watch_history 
+					 where user_no = #{userNo}
+					 group by user_no, video_no) WH, videos V, (select video_no , count(*) views
+																from watch_history 
+																group by video_no) Vi, users M, video_meta VM, (select user_no, video_no , create_date 
+																												from watch_later 
+																												where user_no = #{userNo}) WL
+				where 
+					WH.video_no = V.video_no 
+					and WH.video_no = Vi.video_no 
+					and V.creator_no = M.user_no
+					and V.video_no = VM.video_no
+					and WH.video_no = WL.video_no(+)
+					and V.video_title like '%'||#{keyword}||'%')
+		where 
+			rk &lt;= #{endIndex} and rk &gt;= #{beginIndex}
+ 	</select>
+ 	
+<!-- ========================플레이리스트========================== -->
+
+ 	<delete id="deletePlaylistVideo" parameterType="HomeCriteria">
+ 		delete from playlist_videos
+ 		where playlist_no = #{playlistNo} and video_no = #{videoNo}
+ 	</delete>
+ 	
+ 	<delete id="deleteAllPlaylistVideo" parameterType="int">
+ 		delete from playlist_videos
+ 		where playlist_no = #{value}
+ 	</delete>
+ 	
+ 	<delete id="deletePlaylist" parameterType="int">
+ 		delete from playlists 
+		where playlist_no = #{value}
+ 	</delete>
+ 	
+ 	<update id="plAllOrderUpdate" parameterType="LibrarySummary">
+ 		update playlist_videos
+ 		set video_order = #{playlistOrder}
+ 		where video_no = #{videoNo} and playlist_no = #{playlistNo}
+ 		<!-- <foreach index="index"  item="plv" collection="vListResult">
+			update playlist_videos
+	 		set video_order = #{plv.playlistOrder}
+	 		where video_no = #{plv.videoNo} and playlist_no = #{plv.playlistNo}
+ 		</foreach> -->
+ 	</update>
+ 	
+ 	<update id="playlistOrderUpdate" parameterType="HomeCriteria">
+ 		{call
+ 			declare
+ 			begin
+ 				update playlist_videos 
+				set video_order = #{beforeOrder}
+				where playlist_no = #{playlistNo} and video_no = #{videoNo};
+				
+				update playlist_videos 
+				set video_order = #{afterOrder}
+				where playlist_no = #{playlistNo} and video_no = #{afterVideoNo};
+ 			end}
+ 	</update>
+ 	
+ 	<update id="playlistImgUpdate" parameterType="HomeCriteria">
+ 		update playlists 
+		set playlist_rep_img = #{playlistRepImg}
+		where playlist_no = #{playlistNo}
+ 	</update>
+ 	
+ 	<update id="changePlaylistStatus" parameterType="HomeCriteria">
+ 		update playlists 
+		set playlist_status = #{playlistStatus}
+		where playlist_no = #{playlistNo}
+ 	</update>
+ 	
+ 	<update id="changePlaylistContent" parameterType="HomeCriteria">
+ 		update playlists
+ 		set playlist_contents = #{playlistContent}
+ 		where playlist_no = #{playlistNo}
+ 	</update>
+ 
+ 	<update id="changePlaylistTitle" parameterType="HomeCriteria">
+ 		update playlists 
+		set playlist_title = #{playlistTitle}
+		where playlist_no = #{playlistNo}
+ 	</update>
+ 
+ 	<select id="getPlayListVideoList" parameterType="int" resultType="LibrarySummary">
+ 		select 
+ 			row_number() over(order by PV.video_order asc) as rank,
+ 			PV.playlist_no as playlistNo, 
+ 			PV.video_no as videoNo, 
+ 			PV.video_order as playlistOrder, 
+		 	V.video_title as title, 
+		 	VM.video_duration as duration, 
+		 	VM.preview_a3_url as preview_a1_url,
+		 	M.user_no as userNo, 
+		 	M.user_nick as userNick,
+		 	C.ct as videoCount
+		from 
+			playlist_videos PV, 
+			videos V, 
+			video_meta VM, 
+			users M,
+			(select playlist_no, count(*) ct
+			 from playlist_videos
+			 group by playlist_no) C
+		where 
+			PV.video_no = V.video_no 
+			and V.video_no = VM.video_no 
+			and M.user_no = V.creator_no 
+			and C.playlist_no = PV.playlist_no
+			and PV.playlist_no = #{value}
+			and V.video_status = 'enabled'
+		order by 
+			PV.video_order asc
+ 	</select>
+ 
+ 	<select id="getPlayListByPlno" parameterType="int" resultType="LibrarySummary">
+ 		select
+ 			playlist_no as playlistNo,
+ 			owner_no as ownerNo,
+ 			playlist_title as playlistTitle,
+ 			playlist_contents as playlistContents,
+ 			playlist_status as playlistStatus,
+ 			create_date as createDate,
+ 			playlist_rep_img as playlistRepImg
+ 		from
+ 			playlists
+ 		where
+ 			playlist_no = #{value}
+ 	</select>
+ 
+ 	<select id="getPlayList" parameterType="int" resultType="LibrarySummary">
+ 		select
+ 			playlist_no as playlistNo,
+ 			owner_no as ownerNo,
+ 			playlist_title as playlistTitle,
+ 			playlist_contents as playlistContents,
+ 			playlist_status as playlistStatus,
+ 			create_date as createDate,
+ 			playlist_rep_img as playlistRepImg
+ 		from
+ 			playlists
+ 		where
+ 			owner_no = #{value}
+ 		order by 
+ 			create_date desc
+ 	</select>
+ 
+ 	<delete id="deleteWatchLater" parameterType="HomeCriteria">
+ 		delete from watch_later 
+		where user_no = #{userNo} and video_no = #{videoNo}
+ 	</delete>
+ 
+ 	<select id="getLaterList" parameterType="int" resultType="LibrarySummary">
+ 		select 
+ 			U.user_no as userNo, 
+ 			U.user_nick as userNick, 
+ 			U.profile_small_img_url as profile_small_img_url, 
+	     	V.video_no as videoNo, 
+	     	V.video_title as title, 
+	     	V.creator_no as creatorNo, 
+	     	VM.video_duration as duration, 
+	     	VM.preview_a3_url as preview_a1_url,
+	     	M.user_nick as masterNick, 
+	     	M.user_no as masterNo,
+	     	WL.create_date as createDate,
+	     	C.ct as videoCount
+	 	from 
+	 		watch_later WL, 
+	 		users U, 
+	 		videos V, 
+	 		video_meta VM, 
+	 		users M,
+	 		(select user_no, count(*) ct
+			 from watch_later 
+			 group by user_no) C
+		where 
+			WL.user_no = U.user_no
+			and WL.video_no = V.video_no
+			and V.video_no = VM.video_no 
+			and M.user_no = V.creator_no 
+			and WL.user_no = C.user_no
+			and WL.user_no = #{value}
+			and V.video_status = 'enabled'
+		order by 
+			WL.create_date desc
+ 	</select>
+ 
+ 	<delete id="deleteLike" parameterType="HomeCriteria">
+ 		delete from video_vote_history 
+		where user_no = #{userNo} and video_no = #{videoNo}
+ 	</delete>
+ 
+	<select id="getLikeList" parameterType="int" resultType="LibrarySummary">
+		select
+			U.user_no as userNo, 
+			U.user_nick as userNick, 
+			U.profile_small_img_url as profile_small_img_url, 
+		 	V.video_no as videoNo, 
+		 	V.video_title as title,
+		 	V.creator_no as creatorNo,  
+		 	M.user_nick as masterNick,
+		 	M.user_no as  masterNo,
+		 	VM.video_duration as duration, 
+		 	VM.preview_a3_url as preview_a1_url,
+		 	VV.side as side, 
+		 	VV.create_date as createDate,
+		 	VVC.ct as videoCount
+		from 
+			videos V, 
+			video_meta VM, 
+			video_vote_history VV, 
+			users U, 
+			(select user_no, count(*) ct
+			 from video_vote_history 
+			 where side='p'
+			 group by user_no) VVC, 
+			 users M 
+		where 
+			V.video_no = VM.video_no 
+			and V.video_no = VV.video_no 
+			and U.user_no = VV.user_no
+			and VVC.user_no = VV.user_no 
+			and U.user_no= #{value} 
+			and VV.side = 'p' 
+			and M.user_no = V.creator_no
+			and V.video_status = 'enabled'
+		order by 
+			VV.create_date desc
+	</select>
+	
+ </mapper>

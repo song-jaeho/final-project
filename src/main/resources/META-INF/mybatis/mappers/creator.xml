@@ -1,0 +1,851 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+ <mapper namespace="kr.co.ducktube.dao.CreatorDao">
+ 
+	<select id="getWatchedVideos" parameterType="int" resultType="int">
+		select distinct
+			video_no
+		from 
+			(
+				select
+					video_no
+				from
+					watch_history
+				where
+					user_no = #{no}
+				order by
+					create_date desc
+			)
+		where
+			rownum &lt;= 11
+	</select>
+ 
+ 	<delete id="deleteTags" parameterType="int">
+ 		delete 
+ 		from
+ 			tags
+ 		where
+ 			video_no = #{no}
+ 	</delete>
+ 
+ 	<insert id="addNewTags" parameterType="Video">
+ 		<choose>
+ 			<when test="tagList.size > 1">
+ 				insert all
+ 			</when>
+ 			<otherwise>
+ 				insert
+ 			</otherwise>
+ 		</choose>
+		<foreach item="item" index="index" collection="tagList">
+			into tags (
+				video_no,
+				word
+			) values (
+				#{no},
+				#{item}
+			)
+		</foreach>
+		<if test="tagList.size > 1">
+			select * from dual
+		</if>
+ 	</insert>
+ 
+  	<select id="getVideoCategories" resultType="Category">
+ 		select 
+ 			category_name	as Name,
+ 			category_no		as no
+ 		from
+ 			video_categories
+ 	</select>
+
+	<select id="getVideoSequence" resultType="int">
+		select
+			videos_seq.nextval
+		from 
+			dual
+	</select>
+
+	<select id="getRecentlyWatchedVideo" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+		select
+			video_no
+		from (
+			select
+				W.video_no,
+				max(W.create_date) watchDate
+			from
+				watch_history W, Videos V
+			where
+				W.user_no = #{userNo}
+			and
+				W.video_no = V.video_no
+			and
+				V.video_status = 'enabled'	
+			group by
+				W.video_no
+			order by
+				max(W.create_date) desc
+		)
+		where
+			rownum = 1
+	</select>
+
+ 	<insert id="addNewVideo" parameterType="Video">
+		insert all
+			into videos (
+				video_no,
+				creator_no,
+				next_video_no,
+				primary_category_no,
+				secondary_category_no,
+				video_title,
+				video_detail,
+				update_date
+			) values (
+				#{no},
+				#{creatorNo},
+				#{nextVideoNo},
+				#{primaryCategoryNo},
+				#{secondaryCategoryNo},
+				#{title},
+				#{detail},
+				#{updateDate}
+			)
+			into video_meta (
+				video_no,
+				video_url,
+				video_fps,
+				video_duration,
+				video_file_name,
+				preview_a1_url,
+				preview_a2_url,
+				preview_a3_url,
+				preview_a4_url,
+				external_link
+			) values (
+				#{no},
+				#{url},
+				#{fps},
+				#{duration},
+				#{filename},
+				#{previewA1Url},
+				#{previewA2Url},
+				#{previewA3Url},
+				#{previewA4Url},
+				#{externalLink}
+			)
+		select * from dual
+ 	</insert>
+
+	<update id="updateVideo" parameterType="Video">
+	    {call
+	        declare
+	        begin
+				update 
+					videos
+				set
+					creator_no				= #{creatorNo},
+					next_video_no			= #{nextVideoNo},
+					primary_category_no		= #{primaryCategoryNo},
+					secondary_category_no	= #{secondaryCategoryNo},
+					video_title				= #{title},
+					video_detail			= #{detail},
+					video_status			= #{status},
+					update_date				= #{updateDate}
+				where 
+					video_no = #{no};
+	
+				update
+					video_meta
+				set
+					video_url				= #{url},
+					video_fps				= #{fps},
+					video_duration			= #{duration},
+					video_file_name			= #{filename},
+					preview_a1_url			= #{previewA1Url},
+					preview_a2_url			= #{previewA2Url},
+					preview_a3_url			= #{previewA3Url},
+					preview_a4_url			= #{previewA4Url},
+					external_link			= #{externalLink}
+				where
+					video_no = #{no};
+	        end
+	    }
+	</update>
+
+	<select id="getVideoByVideoNo" parameterType="int" resultType="Video">
+		select
+			V.video_no				as no,
+			V.creator_no			as creatorNo,
+			V.primary_category_no	as primaryCategoryNo,
+			V.secondary_category_no	as secondaryCategoryNo,
+			V.next_video_no 		as nextVideoNo,
+			V.video_title			as title,
+			V.video_detail			as detail,
+			V.video_status			as status,
+			V.create_date			as createDate,
+			V.update_date			as updateDate,
+			
+			M.video_url				as url,
+			M.video_fps				as fps,
+			M.video_duration		as duration,
+			M.video_file_name		as filename,
+			M.preview_a1_url		as previewA1Url,
+			M.preview_a2_url		as previewA2Url,
+			M.preview_a3_url		as previewA3Url,
+			M.preview_a4_url		as previewA4Url,
+			M.external_link			as externalLink,
+			rownum
+		from
+			videos V, video_meta M
+		where
+			V.video_no = M.video_no
+		and
+			V.video_no = #{no}
+	</select>
+	
+ 	<select id="getCreatorsVideoSize" parameterType="VideoCriteria" resultType="int">
+ 		select 
+ 			count(*)
+ 		from
+ 			videos
+ 		where
+ 			creator_no = #{creatorNo}
+ 		and
+ 			video_status = #{status}
+ 	</select>
+	
+	
+	<select id="getVideoSize" parameterType="VideoCriteria" resultType="int">
+		select
+			count(*)
+		from	(
+					select
+						V.video_no
+					from
+						videos V, video_meta M, users U,
+						(
+							select  
+								video_no, 
+								listagg(word, ',') within group(order by video_no) words
+							from 
+								tags 
+							group by 
+								video_no 
+						) TW
+					where
+						V.video_no = M.video_no
+					and 
+						V.creator_no = U.user_no
+					and
+						V.video_no = TW.video_no(+)
+					<include refid="videoCriteriaCompare"></include>
+				 )
+	</select>
+
+	<select id="getPlaylistSize" parameterType="VideoCriteria" resultType="int">
+		select 
+			count(*)
+		from (
+				select
+					P.owner_no 					ownerNo,
+					P.playlist_no 				playlistNo,
+					P.playlist_title			playlistTitle,
+					P.playlist_rep_img			playlistImgUrl
+				from
+					playlists P, playlist_videos PV, 
+					(
+						select
+							V.video_no
+						from
+							videos V, video_meta M, users U,
+							(
+								select  
+									video_no, 
+									listagg(word, ',') within group(order by video_no) words
+								from 
+									tags 
+								group by 
+									video_no 
+							) TW
+						where
+							V.video_no = M.video_no
+						and 
+							V.creator_no = U.user_no
+						and
+							V.video_no = TW.video_no(+)
+						<include refid="videoCriteriaCompare"></include>
+					) V
+				where
+					P.playlist_no = PV.playlist_no
+				and
+					PV.video_no = V.video_no
+				and
+					P.playlist_status = 'enabled'
+				group by (
+					P.owner_no,
+					P.playlist_no,
+					P.playlist_title,
+					P.playlist_rep_img
+				)
+			 )
+	</select>
+
+	<select id="getChannelSize" parameterType="VideoCriteria" resultType="int">
+		select
+			count(*)
+		from (
+			select
+				VV.creator_no
+			from (
+					select
+						V.creator_no
+					from
+						videos V, video_meta M, users U,
+						(
+							select  
+								video_no, 
+								listagg(word, ',') within group(order by video_no) words
+							from 
+								tags 
+							group by 
+								video_no  
+						) TW
+					where
+						V.video_no = M.video_no
+					and
+						V.creator_no = U.user_no
+					and
+						V.video_no = TW.video_no(+)
+					<include refid="videoCriteriaCompare"></include>
+				 ) VV, channels C
+			where
+				VV.creator_no = C.owner_no
+			group by
+				VV.creator_no
+		)
+	</select>
+
+	<resultMap id="channelMap" type="map">
+		<result property="ownerNo" 					column="ownerNo" 					javaType="int"/>
+		<result property="ownerProfileBigImgUrl" 	column="ownerProfileBigImgUrl" 		javaType="string"/>
+		<result property="ownerProfileSmallImgUrl" 	column="ownerProfileSmallImgUrl" 	javaType="string"/>
+		<result property="channelTitle" 			column="channelTitle" 				javaType="string"/>
+		<result property="channelImgUrl" 			column="channelImgUrl" 				javaType="string"/>
+		<result property="ownerNick" 				column="ownerNick" 					javaType="string"/>
+		<result property="likeCount" 				column="likeCount" 					javaType="long"/>
+		<result property="hateCount" 				column="hateCount" 					javaType="long"/>
+		<result property="watchCount" 				column="watchCount" 				javaType="long"/>
+		<result property="proximityPoint" 			column="proximityPoint" 			javaType="double"/>
+		<result property="duration" 				column="duration" 					javaType="double"/>
+		<result property="createDate" 				column="createDate" 				javaType="date"/>
+		<result property="similarVideoCount" 		column="similarVideoCount" 			javaType="int"/>
+		<result property="videoCount" 				column="videoCount" 				javaType="int"/>
+		<result property="memberCount" 				column="memberCount" 				javaType="int"/>
+	</resultMap>
+	<select id="getChannels" parameterType="VideoCriteria" resultMap="channelMap">
+		select
+			*
+		from (
+				select
+					rownum rn , VVV.*
+				from (
+						select
+							VV.user_no					ownerNo,
+							VV.profile_big_img_url		ownerProfileBigImgUrl,
+							VV.profile_small_img_url	ownerProfileSmallImgUrl,
+							VV.user_nick				ownerNick,
+							C.channel_title				channelTitle,
+							C.channel_img_url			channelImgUrl,
+							sum( VV.likeCount )			likeCount,
+							sum( VV.hateCount )  		hateCount,
+							sum( VV.watchCount ) 		watchCount,
+							sum( VV.proximityPoint ) 	proximityPoint,
+							avg( VV.video_duration )	duration,
+							max( VV.create_date )		createDate,
+							count(*)					similarVideoCount,
+							(
+								select
+									count(*)
+								from
+									videos
+								where
+									creator_no = VV.user_no
+								group by
+									VV.user_no
+							) videoCount,
+							(
+								select 
+									count(*)
+								from
+									subscriptions S, users M
+								where
+									VV.user_no = S.owner_no
+								and
+									VV.user_no = M.user_no
+								group by
+									VV.user_no
+							) memberCount
+						from (
+								select
+									U.user_no,
+									V.create_date,
+									M.video_duration,
+									U.user_nick,
+									U.profile_big_img_url,
+									U.profile_small_img_url,
+									<include refid="getVideoProximityPoint"></include>,
+									(
+										select
+											count(*)
+										from
+											video_vote_history VH
+										where
+											VH.video_no = V.video_no
+										and
+											VH.side = 'p'
+									) likeCount ,
+									(
+										select
+											count(*)
+										from
+											video_vote_history VH
+										where
+											VH.video_no = V.video_no
+										and
+											VH.side = 'n'
+									) hateCount ,
+									(
+										select 
+											count(*)		
+										from
+											watch_history
+										where 
+											video_no = V.video_no
+									) watchCount
+								from
+									videos V, video_meta M, Users U,
+									(
+										select  
+											video_no, 
+											listagg(word, ',') within group(order by video_no) words
+										from 
+											tags 
+										group by 
+											video_no 
+									) TW
+								where
+									V.video_no = M.video_no
+								and
+									V.creator_no = U.user_no
+								and
+									V.video_no = TW.video_no(+)
+								<include refid="videoCriteriaCompare"></include>
+								
+							 ) VV, channels C
+						where
+							VV.user_no = C.owner_no
+						group by
+							VV.user_no,
+							VV.PROFILE_BIG_IMG_URL,
+							VV.PROFILE_SMALL_IMG_URL,
+							VV.user_nick,
+							C.channel_title,
+							C.channel_img_url
+						<include refid="sorting"></include>	
+					 ) VVV
+					
+			 )
+		<include refid="pageNation"></include>
+	</select>
+
+	<resultMap id="playlistMap" type="map">
+		<result property="ownerNo" 				column="ownerNo" 				javaType="int"/>
+		<result property="playlistNo" 			column="playlistNo" 			javaType="int"/>
+		<result property="playlistTitle" 		column="playlistTitle"			javaType="string"/>
+		<result property="playlistImgUrl" 		column="playlistImgUrl"			javaType="string"/>
+		<result property="likeCount" 			column="likeCount" 				javaType="long"/>
+		<result property="hateCount" 			column="hateCount" 				javaType="long"/>
+		<result property="watchCount" 			column="watchCount" 			javaType="long"/>
+		<result property="proximityPoint" 		column="proximityPoint" 		javaType="long"/>
+		<result property="duration" 			column="duration" 				javaType="double"/>
+		<result property="createDate" 			column="createDate" 			javaType="date"/>
+		<result property="ownerNick" 			column="ownerNick" 				javaType="string"/>
+		<result property="playlistVideoCount" 	column="playlistVideoCount" 	javaType="int"/>
+		<result property="firstVideoNo" 		column="firstVideoNo" 			javaType="int"/>
+		<result property="firstVideoTitle" 		column="firstVideoTitle" 		javaType="string"/>
+		<result property="firstVideoDuration" 	column="firstVideoDuration" 	javaType="double"/>
+		<result property="secondVideoNo" 		column="secondVideoNo" 			javaType="int"/>
+		<result property="secondVideoTitle" 	column="secondVideoTitle" 		javaType="string"/>
+		<result property="secondVideoDuration" 	column="secondVideoDuration" 	javaType="double"/>
+		<result property="similarVideoCount" 	column="similarVideoCount" 		javaType="int"/>
+	</resultMap>
+	<select id="getPlaylists" parameterType="VideoCriteria" resultMap="playlistMap">
+		select
+			*
+		from (
+				select
+					rownum rn , VVV.*
+				from
+						(
+							select
+								P.owner_no 					ownerNo,
+								P.playlist_no 				playlistNo,
+								P.playlist_title			playlistTitle,
+								P.playlist_rep_img			playlistImgUrl,
+								sum( V.likeCount )			likeCount,
+								sum( V.hateCount )  		hateCount,
+								sum( V.watchCount ) 		watchCount,
+								sum( V.proximityPoint ) 	proximityPoint,
+								avg( V.video_duration )		duration,
+								max( V.create_date )		createDate,
+								count(*)					similarVideoCount,
+								(
+									select
+										O.user_nick
+									from
+										users O
+									where
+										O.user_no = P.owner_no
+								) ownerNick,
+								(
+									select
+										count(*)
+									from
+										playlist_videos A
+									where
+										A.playlist_no = P.playlist_no
+								) playlistVideoCount,
+								(
+									select
+										A.video_no
+									from
+										playlist_videos A
+									where
+										A.playlist_no = P.playlist_no
+									and
+										A.video_order = 1
+								) firstVideoNo,
+								(
+									select
+										V.video_title
+									from
+										playlist_videos A, videos V
+									where
+										A.playlist_no = P.playlist_no
+									and
+										A.video_no = V.video_no
+									and
+										A.video_order = 1
+								) firstVideoTitle,
+								(
+									select
+										PVM.video_duration
+									from
+										playlist_videos A, video_meta PVM
+									where
+										A.playlist_no = P.playlist_no
+									and
+										A.video_no = PVM.video_no
+									and
+										A.video_order = 1
+								) firstVideoDuration,
+								(
+									select
+										A.video_no
+									from
+										playlist_videos A
+									where
+										A.playlist_no = P.playlist_no
+									and
+										A.video_order = 2
+								) secondVideoNo,
+								(
+									select
+										V.video_title
+									from
+										playlist_videos A, videos V
+									where
+										A.playlist_no = P.playlist_no
+									and
+										A.video_no = V.video_no
+									and
+										A.video_order = 2
+								) secondVideoTitle,
+								(
+									select
+										PVM.video_duration
+									from
+										playlist_videos A, video_meta PVM
+									where
+										A.playlist_no = P.playlist_no
+									and
+										A.video_no = PVM.video_no
+									and
+										A.video_order = 2
+								) secondVideoDuration
+							from
+								playlists P, playlist_videos PV, 
+								(
+									select
+										V.video_no,
+										V.create_date,
+										M.video_url,
+										M.video_fps,
+										M.video_duration,
+										<include refid="getVideoProximityPoint"></include>,
+										(
+											select
+												count(*)
+											from
+												video_vote_history VH
+											where
+												VH.video_no = V.video_no
+											and
+												VH.side = 'p'
+										) likeCount ,
+										(
+											select
+												count(*)
+											from
+												video_vote_history VH
+											where
+												VH.video_no = V.video_no
+											and
+												VH.side = 'n'
+										) hateCount ,
+										(
+											select 
+												count(*)		
+											from
+												watch_history
+											where 
+												video_no = V.video_no
+										) watchCount
+									from
+										videos V, video_meta M, Users U,
+										(
+											select  
+												video_no, 
+												listagg(word, ',') within group(order by video_no) words
+											from 
+												tags 
+											group by 
+												video_no 
+										) TW
+									where
+										V.video_no = M.video_no
+									and
+										V.creator_no = U.user_no
+									and
+										V.video_no = TW.video_no(+)
+									<include refid="videoCriteriaCompare"></include>
+								) V
+							where
+								P.playlist_no = PV.playlist_no
+							and
+								PV.video_no = V.video_no
+							and
+								P.playlist_status = 'enabled'
+							group by (
+								P.owner_no,
+								P.playlist_no,
+								P.playlist_title,
+								P.playlist_rep_img
+							)
+							<include refid="sorting"></include>	
+						) VVV	
+			 ) 
+			<include refid="pageNation"></include>
+	</select>
+
+	<select id="getVideos" parameterType="VideoCriteria" resultType="Video">
+		select
+			*
+		from	(
+					select
+						rownum 					rn, 
+						VVV.*
+					from	(
+								select
+									V.video_no				as no,
+									V.creator_no			as creatorNo,
+									V.primary_category_no	as primaryCategoryNo,
+									V.secondary_category_no	as secondaryCategoryNo,
+									V.next_video_no 		as nextVideoNo,
+									V.video_title			as title,
+									V.video_detail			as detail,
+									V.video_status			as status,
+									V.create_date			as createDate,
+									V.update_date			as updateDate,
+									
+									M.video_url				as url,
+									M.video_fps				as fps,
+									M.video_duration		as duration,
+									M.video_file_name		as filename,
+									M.preview_a1_url		as previewA1Url,
+									M.preview_a2_url		as previewA2Url,
+									M.preview_a3_url		as previewA3Url,
+									M.preview_a4_url		as previewA4Url,
+									M.external_link			as externalLink,
+									U.user_nick				as userNick,
+									TW.words				as tags,
+									<include refid="getVideoProximityPoint"></include>,
+									(
+										select
+											count(*)
+										from
+											video_vote_history VH
+										where
+											VH.video_no = V.video_no
+										and
+											VH.side = 'p'
+									) likeCount ,
+									(
+										select
+											count(*)
+										from
+											video_vote_history VH
+										where
+											VH.video_no = V.video_no
+										and
+											VH.side = 'n'
+									) hateCount ,
+									(
+										select 
+											count(*)		
+										from
+											watch_history VH
+										where 
+											VH.video_no = V.video_no
+									) as watchCount
+								from
+									videos V, video_meta M, users U,
+									(
+										select  
+											video_no, 
+											listagg(word, ',') within group(order by video_no) words
+										from 
+											tags 
+										group by 
+											video_no 
+									) TW
+								where
+									V.video_no = M.video_no
+								and
+									V.creator_no = U.user_no
+								and
+									V.video_no = TW.video_no(+)
+								<include refid="videoCriteriaCompare"></include>
+								<include refid="sorting"></include>
+					) VVV
+					
+		)
+		<include refid="pageNation"></include>
+	</select> 
+
+	<sql id="getVideoProximityPoint">
+		<choose>
+			<when test="keywordList.size > 0">
+			(
+				<foreach item="item" index="index" collection="keywordList">
+					case when REGEXP_COUNT(V.video_title,#{item},1) >= 1 then 4 else 0 end  +
+					case when REGEXP_COUNT(U.user_nick,#{item},1) >= 1 then 3 else 0 end  +
+					case when REGEXP_COUNT(TW.words,#{item},1) >= 1 then 2 else 0 end +
+					case when REGEXP_COUNT(V.video_detail,#{item},1) >= 1 then 1 else 0 end
+					<if test="keywordList.size > index + 1"> + </if>
+				</foreach>	
+			) proximityPoint
+			</when>
+			<otherwise>
+				0 proximityPoint
+			</otherwise>
+		</choose> 
+	</sql>
+	
+	<sql id="videoCriteriaCompare">
+		<if test="playTimeStand != null">
+			<choose>
+				<when test="playTimeStand == 'long'">
+					and
+						M.video_duration &gt;= 1200
+				</when>
+				<when test="playTimeStand == 'short'">
+					and 
+						M.video_duration &lt;= 240
+				</when>
+			</choose>
+		</if>
+		<if test="frameStand != null">
+			<choose>
+				<when test="frameStand == 'high'">
+					and
+						M.video_fps &gt;= 25
+				</when>
+				<when test="frameStand == 'low'">
+					and
+						M.video_fps &lt; 25
+				</when>
+			</choose>
+		</if>
+		<if test="creatorNo != null">
+			and
+				V.creator_no = #{creatorNo}
+		</if>
+		<if test="status != null">
+			and
+				V.video_status = #{status}
+		</if>
+		<if test="keywordList.size > 0">
+			and(
+			<foreach item="item" index="index" collection="keywordList" separator="or"  >
+				U.user_nick like '%' || #{item} || '%' or
+		
+				V.video_title like '%' || #{item} || '%' or
+		
+				V.video_detail like '%' || #{item} || '%' or
+		
+				TW.words like '%' || #{item} || '%'	
+			</foreach>
+			)
+		</if>
+		<if test="exVideoNoList.size > 0">
+			and (
+				V.video_no not in
+			<foreach item="item" index="index" collection="exVideoNoList" open="(" separator=","  close=")">
+				#{item}
+			</foreach>
+			)
+		</if>
+		<if test="fromDate != null and toDate != null">
+			and (
+				V.create_date &gt;= #{fromDate} and V.create_date &lt;= #{toDate}
+			)
+		</if>
+		<if test="primaryCategoryNo != null">
+			and (
+				V.primary_category_no = #{primaryCategoryNo}
+			<if test="relationCategorySearch != null and relationCategorySearch == true">
+				or 
+					V.secondary_category_no = #{primaryCategoryNo}
+			</if>
+			)
+		</if>
+	</sql>
+
+	<sql id="sorting">
+		<if test="orderColumn != null and orderDirection != null">
+			order by ${orderColumn} ${orderDirection}
+		</if>
+	</sql>
+
+	<sql id="pageNation">
+		<if test="startRownum != null and endRownum != null">
+			where rn &gt;= #{startRownum} and rn &lt;= #{endRownum}
+		</if>
+	</sql>
+
+ </mapper>

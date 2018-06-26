@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-config.dtd">
+  
+<configuration>
+	
+	<settings>
+		<setting name="jdbcTypeForNull" value="NULL" />
+	</settings>
+	
+	<typeAliases>
+		<typeAlias type="kr.co.ducktube.vo.table.video.Category" alias="Category"/>
+		<typeAlias type="kr.co.ducktube.vo.table.User" alias="User"/>
+		<typeAlias type="kr.co.ducktube.vo.table.Playlist" alias="Playlist"/>
+		<typeAlias type="kr.co.ducktube.vo.table.video.Video" alias="Video"/>
+		<typeAlias type="kr.co.ducktube.vo.form.UserSearchConditions" alias="UserSearchConditions"/>
+		<typeAlias type="kr.co.ducktube.vo.form.VideoSearchConditions" alias="VideoSearchConditions"/>
+		<typeAlias type="kr.co.ducktube.vo.table.PlaylistVideo" alias="PlaylistVideo"/>
+		<typeAlias type="kr.co.ducktube.vo.table.History" alias="History"/>
+		<typeAlias type="kr.co.ducktube.vo.page.ChannelNoticeSummary" alias="ChannelNoticeSummary"/>
+		<typeAlias type="kr.co.ducktube.vo.page.PopularListSummary" alias="PopularListSummary"/>
+		<typeAlias type="kr.co.ducktube.vo.page.VideoSummary" alias="VideoSummary" />
+		<typeAlias type="kr.co.ducktube.vo.page.PlayListSummary" alias="PlayListSummary" />
+		<typeAlias type="kr.co.ducktube.vo.page.ChannelSummary" alias="ChannelSummary" />
+		<typeAlias type="kr.co.ducktube.vo.page.PlayerSummary" alias="PlayerSummary" />
+		<typeAlias type="kr.co.ducktube.vo.page.CommentsSummary" alias="CommentsSummary" />
+		<typeAlias type="kr.co.ducktube.vo.page.CommunitySummary" alias="CommunitySummary" />
+		<typeAlias type="kr.co.ducktube.vo.page.ReplySummary" alias="ReplySummary" />
+		<typeAlias type="kr.co.ducktube.vo.table.CommunityWritings" alias="CommunityWritings" />
+		<typeAlias type="kr.co.ducktube.vo.criteria.VideoCriteria" alias="VideoCriteria" />
+		<typeAlias type="kr.co.ducktube.vo.table.Subscription" alias="Subscription" />
+		<typeAlias type="kr.co.ducktube.vo.page.CommunityCommentSummary" alias="CommunityCommentSummary" />
+		<typeAlias type="kr.co.ducktube.vo.table.video.VComment" alias="VComment" />
+		<typeAlias type="kr.co.ducktube.vo.page.LibrarySummary" alias="LibrarySummary"/>
+		<typeAlias type="kr.co.ducktube.vo.page.SubscriptionSummary" alias="SubscriptionSummary"/>
+		<typeAlias type="kr.co.ducktube.vo.table.CommunityReplies" alias="CommunityReplies"/>
+		<typeAlias type="kr.co.ducktube.vo.table.CommunityComments" alias="CommunityComments"/>
+		<typeAlias type="kr.co.ducktube.vo.criteria.LibraryCriteria" alias="LibraryCriteria"/>
+		<typeAlias type="kr.co.ducktube.vo.criteria.HomeCriteria" alias="HomeCriteria"/>
+		<typeAlias type="kr.co.ducktube.vo.page.CommentReplySummary" alias="CommentReplySummary"/>
+	</typeAliases>
+	
+	<mappers>
+		<mapper resource="META-INF/mybatis/mappers/user.xml" />
+		<mapper resource="META-INF/mybatis/mappers/home.xml" />
+		<mapper resource="META-INF/mybatis/mappers/creator.xml" />
+		<mapper resource="META-INF/mybatis/mappers/dummy.xml" />
+		<mapper resource="META-INF/mybatis/mappers/subscription.xml" />
+		<mapper resource="META-INF/mybatis/mappers/player.xml" />
+		<mapper resource="META-INF/mybatis/mappers/library.xml" />
+	</mappers>
+
+</configuration>

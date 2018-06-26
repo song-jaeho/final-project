@@ -1,0 +1,451 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+ <mapper namespace="kr.co.ducktube.dao.PlayerDao">
+ 	<select id="getVideoDetailByNo" parameterType="int" resultType="PlayerSummary">
+ 	select
+ 			V.video_no				as videoNo,
+			V.creator_no			as creatorNo,
+			V.primary_category_no	as primaryCategoryNo,
+			V.secondary_category_no	as secondaryCategoryNo,
+			V.video_title			as title,
+			V.video_detail			as detail,
+			V.video_status			as status,
+			V.create_date			as createDate,
+			V.update_date			as updateDate,
+			
+			M.video_url				as url,
+			M.video_fps				as fps,
+			M.video_duration		as duration,
+			M.video_file_name		as filename,
+			M.preview_a1_url		as previewA1Url,
+			M.preview_a2_url		as previewA2Url,
+			M.preview_a3_url		as previewA3Url,
+			M.preview_a4_url		as previewA4Url,
+			M.external_link			as externalLink,
+			
+			U.user_no				as userNo,
+			U.user_nick				as userNick,
+			U.profile_big_img_url	as profileBigImgUrl, 
+			U.profile_small_img_url	as profileSmallImgUrl,
+			
+			VC.category_no			as categoryNo,
+			VC.category_name		as categoryName
+			
+			
+		from
+			videos V, video_meta M, users U, video_categories VC
+		where
+			V.video_no = M.video_no 
+		and 
+			V.creator_no = U.user_no
+		and
+			V.primary_category_no = VC.category_no
+ 		and
+			V.video_no = #{value}
+ 	</select>
+ 	
+ 	<select id="getVideoLikesCountByNo" parameterType="int" resultType="int">
+ 		select count(VVH.side)
+		from 
+			videos V, video_vote_history VVH
+		where 
+			V.video_no = #{value}
+		and 
+			VVH.side = 'p'
+		and
+			V.video_no = VVH.video_no
+ 	</select>
+ 	<select id="getVideoHateCountByNo" parameterType="int" resultType="int">
+ 		select count(VVH.side)
+		from 
+			videos V, video_vote_history VVH
+		where 
+			V.video_no = #{value}
+		and 
+			VVH.side = 'n'
+		and
+			V.video_no = VVH.video_no
+ 	</select>
+ 	
+ 	
+ 	<!-- 댓글 삽입 -->
+ 	<insert id="insertVideoComment" parameterType="CommentsSummary">
+ 		insert into video_comments
+ 			(comment_no,commenter_no,video_no,comment_contents)
+		values 
+			(#{no},#{commenterNo},#{videoNo},#{contents})
+ 	</insert>
+
+	<delete id="deleteComment" parameterType="CommentsSummary">
+		delete from video_comments
+		where commenter_no = #{commenterNo} and comment_no = #{no}
+	</delete>
+	
+ 	<select id="getVideoCommentByCommentNo" parameterType="int"  resultType="CommentsSummary">
+ 	select 
+		VC.comment_no as no, 
+		VC.commenter_no as commenterNo, 
+		VC.video_no as videoNo, 
+		VC.comment_contents as contents, 
+		VC.comment_status as status, 
+		VC.create_date as createDate,
+		U.user_no				as userNo,
+		U.user_nick				as userNick,
+		U.profile_big_img_url	as profileBigImgUrl, 
+		U.profile_small_img_url	as profileSmallImgUrl
+	from 
+		video_comments VC, users U
+	where 
+		VC.comment_no = #{value}
+		and VC.commenter_no=U.user_no
+	order by
+		no desc
+ 	</select>
+ 	<select id="getVideoCommentByComenterNo" parameterType="map"  resultType="CommentsSummary">
+ 	select 
+		VC.comment_no as no, 
+		VC.commenter_no as commenterNo, 
+		VC.video_no as videoNo, 
+		VC.comment_contents as contents, 
+		VC.comment_status as status, 
+		VC.create_date as createDate,
+		U.user_no				as userNo,
+		U.user_nick				as userNick,
+		U.profile_big_img_url	as profileBigImgUrl, 
+		U.profile_small_img_url	as profileSmallImgUrl
+	from 
+		video_comments VC, users U
+	where 
+		VC.video_no = #{videoNo}
+		and VC.commenter_no = #{commenterNo}
+		and VC.commenter_no=U.user_no
+	order by
+		no desc
+ 	</select>
+ 	<update id="updateMyComment" parameterType="CommentsSummary">
+ 	update video_comments
+	set comment_contents = #{contents}
+	where commenter_no = #{commenterNo} and video_no = #{videoNo}
+ 	</update>
+ 	<select id="getVideoCommentByVideoNo" parameterType="int"  resultType="CommentsSummary">
+ 	select 
+		VC.comment_no as no, 
+		VC.commenter_no as commenterNo, 
+		VC.video_no as videoNo, 
+		VC.comment_contents as contents, 
+		VC.comment_status as status, 
+		VC.create_date as createDate,
+		U.user_no				as userNo,
+		U.user_nick				as userNick,
+		U.profile_big_img_url	as profileBigImgUrl, 
+		U.profile_small_img_url	as profileSmallImgUrl
+	from 
+		video_comments VC, users U
+	where 
+		VC.video_no = #{value}
+		and VC.commenter_no=U.user_no
+	order by
+		no desc
+ 	</select>
+ 	
+ 	<select id="getVideoCommentsSeq" resultType="int">
+		select video_comments_seq.nextval from dual
+	</select>
+	
+	<select id="getCountCommentByVideoNo" parameterType="int" resultType="int">
+	select count(C.comment_no)
+	from videos V, video_comments C
+	where V.video_no = #{value}
+	and V.video_no = C.video_no
+	
+	</select>
+	
+<!-- 답글 삽입 -->
+	<insert id="insertReply" parameterType="ReplySummary">
+ 		insert into vc_replies
+ 			(reply_no,comment_no,replier_no,reply_contents)
+		values 
+			(#{no},#{commentNo},#{replierNo},#{contents})
+ 	</insert>
+ 	
+ 	<select id="getReplySeq" resultType="int">
+		select vc_replies_seq.nextval from dual
+	</select>
+	<select id="getReplyByReplyNo" parameterType="int"  resultType="ReplySummary">
+ 	select 
+		VR.reply_no as no, 
+		VR.comment_no as commentNo, 
+		VR.replier_no as replierNo, 
+		VR.reply_contents as contents, 
+		VR.reply_status as status, 
+		VR.create_date as createDate,
+		U.user_no				as userNo,
+		U.user_nick				as userNick,
+		U.profile_big_img_url	as profileBigImgUrl, 
+		U.profile_small_img_url	as profileSmallImgUrl
+	from 
+		vc_replies VR, users U
+	where 
+		VR.reply_no = #{value}
+		and VR.replier_no=U.user_no
+	order by
+		no desc
+ 	</select>
+	
+	<select id="getReplyByCommentNo" parameterType="int"  resultType="ReplySummary">
+ 	select 
+		VR.reply_no as no, 
+		VR.comment_no as commentNo, 
+		VR.replier_no as replierNo, 
+		VR.reply_contents as contents, 
+		VR.reply_status as status, 
+		VR.create_date as createDate,
+		U.user_no				as userNo,
+		U.user_nick				as userNick,
+		U.profile_big_img_url	as profileBigImgUrl, 
+		U.profile_small_img_url	as profileSmallImgUrl
+	from 
+		vc_replies VR, users U
+	where 
+		VR.comment_no = #{value}
+		and VR.replier_no=U.user_no
+	order by
+		no desc
+ 	</select>
+ 	
+ 	<select id="getSubOrderCreateDateByUserNo" parameterType="int"  resultType="SubscriptionSummary">
+	select 
+		V.video_no		as videoNo,
+		V.creator_no	as creatorNo,
+		V.video_title	as title,
+		V.create_date	as createDate,
+		V.video_status	as videoStatus,
+		
+		U.user_no		as userNo,
+		
+		C.user_nick		as creatorNick,
+		
+		VM.video_duration	as duration,
+		VM.preview_A4_URL	as priviewA4URL,
+		
+		S.channel_notice	as channelNotice
+		
+		
+	from 
+		videos V, users U, users C, video_meta VM, subscriptions S 
+	where
+		U.user_no=#{value}
+	and
+		S.channel_notice = 'on'
+	and
+		V.video_status = 'enabled'
+	and
+		V.creator_no = C.user_no
+	and 
+		V.video_no = VM.video_no
+	and 
+		V.creator_no = S.owner_no
+	and 
+		U.user_no = S.user_no
+	order by 
+		V.create_date desc
+ 	</select>
+	<!-- 영상 좋아요 싫어요 -->
+	<insert id="insertVideoVote" parameterType="History">
+	insert into video_vote_history
+		(user_no, video_no, side)
+	values 
+		(#{userNo}, #{targetNo}, #{voteSide})
+	</insert>
+	
+	<delete id="deleteVideoVote" parameterType="History">
+	delete from video_vote_history
+	where 
+		user_no = #{userNo} 
+	and 
+		video_no = #{targetNo}
+	</delete>
+	<update id="updateVideoVote" parameterType="History">
+	update video_vote_history
+	set side = #{voteSide}
+	where 
+		user_no = #{userNo} 
+	and 
+		video_no = #{targetNo}
+	</update>
+	<select id="getCountVoteByHistory" parameterType="map" resultType="int">
+	select count(side)
+	from video_vote_history
+	where side = #{voteSide} and video_no = #{targetNo}
+	</select>
+	
+	<select id="getVideoVoteByHistory" parameterType="map" resultType="String">
+	select 
+		side		as voteSide
+	from 
+		video_vote_history
+	where 
+		user_no = #{userNo} 
+	and 
+		video_no = #{targetNo}
+	</select>
+
+	<!-- 댓글 좋아요 싫어요 -->
+	<insert id="insertCommentVideoVote" parameterType="History">
+	insert into vc_vote_history
+		(user_no, comment_no, side)
+	values 
+		(#{userNo}, #{targetNo}, #{voteSide})
+	</insert>
+	
+	<delete id="deleteCommentVote" parameterType="History">
+	delete from vc_vote_history
+	where 
+		user_no = #{userNo} 
+	and 
+		comment_no = #{targetNo}
+	</delete>
+	<update id="updateCommentVote" parameterType="History">
+	update vc_vote_history
+	set side = #{voteSide}
+	where 
+		user_no = #{userNo} 
+	and 
+		comment_no = #{targetNo}
+	</update>
+	<select id="getCountCommentVoteByHistory" parameterType="map" resultType="int">
+	select count(side)
+	from vc_vote_history
+	where side = #{voteSide} and comment_no = #{targetNo}
+	</select>
+	
+	<select id="getCommentVoteByHistory" parameterType="map" resultType="String">
+	select 
+		side		as voteSide
+	from 
+		vc_vote_history
+	where 
+		user_no = #{userNo} 
+	and 
+		comment_no = #{targetNo}
+	</select>
+	<select id="getCommentLikesCountByNo" parameterType="int" resultType="int">
+ 		select count(VVH.side)
+		from 
+			videos V, vc_vote_history VVH
+		where 
+			V.comment_no = #{value}
+		and 
+			VVH.side = 'p'
+		and
+			V.comment_no = VVH.comment_no
+ 	</select>
+ 	<select id="getCommentHateCountByNo" parameterType="int" resultType="int">
+ 		select count(VVH.side)
+		from 
+			videos V, vc_vote_history VVH
+		where 
+			V.comment_no = #{value}
+		and 
+			VVH.side = 'n'
+		and
+			V.comment_no = VVH.comment_no
+ 	</select>
+	<!-- 조회수 -->
+	<insert id="insertWatchHistory" parameterType="History">
+	insert into watch_history
+		(user_no, video_no)
+	values 
+		(#{userNo}, #{targetNo})
+	</insert>
+ 	<select id="getVideoViewCountByNo" parameterType="int" resultType="int">
+	 	select count(*)
+		from 
+			watch_history
+		where 
+			video_no = #{value}
+ 	</select>
+ 	
+ 	<!-- 재생목록 -->
+ 	<select id="getPlayListBylistNo" parameterType="int" resultType="PlayerSummary">
+ 	select
+		V.video_no				as videoNo,
+		V.creator_no			as creatorNo,
+		V.primary_category_no	as primaryCategoryNo,
+		V.secondary_category_no	as secondaryCategoryNo,
+		V.video_title			as title,
+		V.video_detail			as detail,
+		V.video_status			as status,
+		V.create_date			as createDate,
+		V.update_date			as releaseDate,
+				
+		M.video_url				as url,
+		M.video_fps				as fps,
+		M.video_duration		as duration,
+		M.video_file_name		as filename,
+		M.preview_a1_url		as previewA1Url,
+		M.preview_a2_url		as previewA2Url,
+		M.preview_a3_url		as previewA3Url,
+		M.preview_a4_url		as previewA4Url,
+		M.external_link			as externalLink,
+				
+		C.user_no				as userNo,
+		C.user_nick				as userNick,
+		C.profile_big_img_url	as profileBigImgUrl, 
+		C.profile_small_img_url	as profileSmallImgUrl,
+		
+		U.user_no				as userNo2,	
+			
+		VC.category_no			as categoryNo,
+		VC.category_name		as categoryName,
+		
+		PL.playlist_no			as playlistNo,
+		PL.playlist_title		as playlistTitle,
+		
+		PV.video_order			as playOrderNo
+					
+	from
+		videos V, video_meta M, users U, users C, video_categories VC, playlists PL, playlist_videos PV
+	where
+		V.video_no = M.video_no 
+	and 
+		V.creator_no = C.user_no
+	and
+		V.primary_category_no = VC.category_no
+	and
+		PL.owner_no = U.user_no
+	and 
+		PL.playlist_no = PV.playlist_no 
+	and 
+		PV.video_no = V.video_no
+	and 
+		PL.playlist_no = #{value}
+	order by 
+		PV.video_order asc
+ 	</select>
+ 	<!-- 구독 -->
+ 	<select id="getSubScriptionByMap" parameterType="map" resultType="Subscription">
+ 	select 
+ 		user_no		as userNo, 
+ 		owner_no	as ownerNo, 
+ 		channel_notice	as notice
+	from subscriptions 
+	where user_no= #{userNo} and owner_no = #{ownerNo}
+ 	</select>
+ 	<select id="getSubCountByOwnerNo" parameterType="int" resultType="int">
+ 	select count(user_no)
+	from subscriptions 
+	where owner_no = #{value}
+ 	</select>
+ 	<insert id="insertSubscription" parameterType="Subscription">
+ 	insert into subscriptions(user_no, owner_no)
+	values (#{userNo}, #{ownerNo})
+ 	</insert>
+ 	<delete id="deleteSubscription" parameterType="Subscription">
+ 	delete from subscriptions
+	where user_no = #{userNo} and owner_no = #{ownerNo}
+ 	</delete>
+ </mapper>

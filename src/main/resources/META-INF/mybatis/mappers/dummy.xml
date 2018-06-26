@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+ <mapper namespace="kr.co.ducktube.dao.DummyDao">
+
+	<select id="getVideoByNo" parameterType="int" resultType="Video">
+		select
+			V.video_no				as no,
+			V.creator_no			as creatorNo,
+			V.primary_category_no	as primaryCategoryNo,
+			V.secondary_category_no	as secondaryCategoryNo,
+			V.next_video_no 		as nextVideoNo,
+			V.video_title			as title,
+			V.video_detail			as detail,
+			V.video_status			as status,
+			V.create_date			as createDate,
+			V.release_date			as releaseDate,
+			
+			M.video_url				as url,
+			M.video_fps				as fps,
+			M.video_duration		as duration,
+			M.video_file_name		as filename,
+			M.preview_a1_url		as previewA1Url,
+			M.preview_a2_url		as previewA2Url,
+			M.preview_a3_url		as previewA3Url,
+			M.preview_a4_url		as previewA4Url,
+			M.external_link			as externalLink
+		from
+			videos V, video_meta M
+		where
+			V.video_no = M.video_no
+		and
+			V.video_no = #{no}
+	</select>
+
+	<select id="getAllVideos" resultType="Video">
+		select
+			V.video_no				as no,
+			V.creator_no			as creatorNo,
+			V.primary_category_no	as primaryCategoryNo,
+			V.secondary_category_no	as secondaryCategoryNo,
+			V.next_video_no 		as nextVideoNo,
+			V.video_title			as title,
+			V.video_detail			as detail,
+			V.video_status			as status,
+			V.create_date			as createDate,
+			V.release_date			as releaseDate,
+			
+			M.video_url				as url,
+			M.video_fps				as fps,
+			M.video_duration		as duration,
+			M.video_file_name		as filename,
+			M.preview_a1_url		as previewA1Url,
+			M.preview_a2_url		as previewA2Url,
+			M.preview_a3_url		as previewA3Url,
+			M.preview_a4_url		as previewA4Url,
+			M.external_link			as externalLink
+		from
+			videos V, video_meta M
+		where
+			V.video_no = M.video_no
+	</select>
+
+	<select id="getAllUsers" resultType="User">
+		select
+			user_no					as no
+			, user_email			as email
+			, user_name				as name
+			, user_nick				as nick
+			, user_pwd				as password
+			, user_address			as address
+			, user_short_introduce	as shortIntroduce
+			, user_phone			as phone
+			, user_gender			as gender
+			, user_birthday			as birthday
+			, profile_big_img_url	as profileBigImgUrl
+			, profile_small_img_url as profileSmallImgUrl
+		from
+			users
+	</select>
+
+	<insert id="recordWatchHistory" parameterType="History">
+		insert into watch_history (
+			user_no,
+			video_no
+		) values (
+			#{userNo},
+			#{targetNo}
+		)
+	</insert>
+	
+	<select id="getWatchHistories" resultType="History">
+		select
+			user_no		userNo,
+			video_no	targetNo,
+			create_date	createDate
+		from
+			watch_history
+	</select>
+	
+	<update id="updateWatchHistory" parameterType="History">
+		update 
+			watch_history
+		set
+			create_date = #{newDate}
+		where
+			video_no = #{targetNo}
+		and
+			user_no = #{userNo}
+		and
+			create_date = #{createDate}
+	</update>
+	
+	<insert id="recordVideoVoteHistory" parameterType="History">
+		insert into video_vote_history (
+			user_no,
+			video_no,
+			side
+		) values (
+			#{userNo},
+			#{targetNo},
+			#{voteSide}
+		)
+	</insert>
+	
+	<insert id="recordVideoReportHistory" parameterType="History">
+		insert into video_report_history (
+			user_no,
+			video_no,
+			report_contents
+		) values (
+			#{userNo},
+			#{targetNo},
+			#{reportContents}
+		)
+	</insert>
+	
+	<select id="getVideoVoteHistory" parameterType="History" resultType="History">
+		select
+			user_no			as userNo,
+			video_no		as videoNo,
+			side			as voteSide
+		from
+			video_vote_history
+		where
+			user_no = #{userNo}
+		and
+			video_no = #{targetNo}
+	</select>
+	
+	<select id="getVideoReportHistory" parameterType="History" resultType="History">
+		select
+			user_no			as userNo,
+			video_no		as videoNo,
+			report_contents	as reportContents
+		from
+			video_report_history
+		where
+			user_no = #{userNo}
+		and 
+			video_no = #{targetNo}
+	</select>
+	
+	<insert id="addNewSubscription" parameterType="Subscription">
+		insert into subscriptions (
+			user_no,
+			owner_no
+		) values (
+			#{userNo},
+			#{ownerNo}
+		)
+	</insert>
+	
+	<select id="getSubscriptionsByUserNo" parameterType="int" resultType="Subscription">
+		select
+			user_no			as userNo,
+			owner_no		as ownerNo,
+			channel_notice	as channelNotice
+		from
+			subscriptions
+		where
+			user_no = #{no}
+	</select>
+	
+	<update id="changeVideoCreateDate" parameterType="map">
+		update 
+			videos
+		set 
+			create_Date = #{createDate}
+		where
+			video_no = #{videoNo}
+	</update>
+	
+	<select id="getVideoVoteHistories" resultType="History">
+		select
+			user_no		as userNo,
+			video_no	as targetNo,
+			create_date	as createDate
+		from
+			video_vote_history
+	</select>
+	
+	<update id="changeVideoVoteDate" parameterType="History">
+		update
+			video_vote_history
+		set
+			create_date = #{createDate}
+		where
+			video_no = #{targetNo}
+		and
+			user_no = #{userNo}
+	</update>
+	
+ </mapper>

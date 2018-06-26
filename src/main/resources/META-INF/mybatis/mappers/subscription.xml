@@ -1,0 +1,1223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+ <mapper namespace="kr.co.ducktube.dao.SubscriptionDao">
+ 	
+ 	<select id="getVideosInfoByMapFull" parameterType="map" resultType="VideoSummary">
+ 		select
+ 			"video.no"					as "video.no"
+			,"video.creatorNo"			as "video.creatorNo"
+			,"video.title" 				as "video.title"
+			,"video.status"				as "video.status"
+			,"video.createDate"			as "video.createDate"
+			,"video.updateDate" 		as "video.updateDate"
+			,"video.detail"				as "video.detail"
+			,"watchCount"				as "watchCount"
+			,"video.url"				as "video.url"
+			,"video.duration"			as "video.duration"
+			,"video.previewA3Url"		as "video.previewA3Url"
+			,"video.externalLink"		as "video.externalLink"
+			,"video.fps"				as "video.fps"
+		from
+	 		(select
+	 			"video.no"					as "video.no"
+				,"video.creatorNo"			as "video.creatorNo"
+				,"video.title" 				as "video.title"
+				,"video.status"				as "video.status"
+				,"video.createDate"			as "video.createDate"
+				,"video.updateDate" 		as "video.updateDate"
+				,"video.detail"				as "video.detail"
+				,"watchCount"				as "watchCount"
+				,"video.url"				as "video.url"
+				,"video.duration"			as "video.duration"
+				,"video.previewA3Url"		as "video.previewA3Url"
+				,"video.externalLink"		as "video.externalLink"
+				,"video.fps"				as "video.fps"
+				<if test="criteria == null">
+				,row_number() over (order by "video.createDate" asc) as rn
+				</if>
+				<if test="criteria != null">
+					<choose>
+						<when test="criteria == 'hottest'">
+							,row_number() over (order by "watchCount" desc) as rn
+						</when>
+						<when test="criteria == 'eldest'">
+							,row_number() over (order by "video.createDate" asc) as rn	
+						</when>
+						<when test="criteria == 'newest'">
+							,row_number() over (order by "video.createDate" desc) as rn	
+						</when>
+					</choose>
+				</if>
+			from
+		 		(select
+		 			video_no 					as "video.no"
+					,creator_no 				as "video.creatorNo"
+					,video_title 				as "video.title"
+					,video_status 				as "video.status"
+					,create_date 				as "video.createDate"
+					,update_date 				as "video.updateDate"
+					,video_detail				as "video.detail"
+					,cnt						as "watchCount"
+					,video_url					as "video.url"
+					,VIDEO_DURATION				as "video.duration"
+					,preview_a3_url				as "video.previewA3Url"
+					,EXTERNAL_LINK				as "video.externalLink"
+					,video_fps					as "video.fps"
+		 		from
+			 		(select
+						A.video_no 					
+						,A.creator_no 				
+						,A.video_title 			
+						,A.video_status 			
+						,A.create_date 				
+						,A.update_date 				
+						,A.video_detail				
+						,C.video_url			
+						,C.VIDEO_DURATION			
+						,C.preview_a3_url		
+						,C.EXTERNAL_LINK			
+						,C.video_fps
+						,E.cnt	
+					FROM
+						VIDEO_VOTE_HISTORY B, Videos A, video_meta C, (select
+																			count(*) as count, video_no
+																		from
+																			VIDEO_VOTE_HISTORY
+																		group by
+																			video_no) D, (select 
+																									count(user_no) as cnt, video_no
+																								from 
+																									WATCH_HISTORY
+																								group by
+																									video_no) E
+					where
+						B.side = 'p'
+						and A.video_no = E.video_no (+)
+						and B.user_no = #{ownerNo}
+						and B.VIDEO_NO = A.video_no
+						and A.video_no = C.video_no
+						and D.video_no = A.video_no
+						and A.video_status = 'enabled')
+		
+				union
+				
+				select
+		 			video_no 					as "video.no"
+					,creator_no 				as "video.creatorNo"
+					,video_title 				as "video.title"
+					,video_status 				as "video.status"
+					,create_date 				as "video.createDate"
+					,update_date 				as "video.updateDate"
+					,video_detail				as "video.detail"
+					,cnt						as "watchCount"
+					,video_url					as "video.url"
+					,VIDEO_DURATION				as "video.duration"
+					,preview_a3_url				as "video.previewA3Url"
+					,EXTERNAL_LINK				as "video.externalLink"
+					,video_fps					as "video.fps"
+		 		from
+			 		(select
+				 		A.video_no 					
+						,A.creator_no 	
+						,A.video_title 				
+						,A.video_status 			
+						,A.create_date 			
+						,A.update_date 				
+						,A.video_detail			
+						,B.cnt					
+						,C.video_url				
+						,C.VIDEO_DURATION			
+						,C.preview_a3_url
+						,C.EXTERNAL_LINK			
+						,C.video_fps		
+		
+					from
+						videos A, (select 
+										count(user_no) as cnt, video_no
+									from 
+										WATCH_HISTORY
+									group by
+										video_no) B, video_meta C
+					where
+						A.VIDEO_NO = B.video_no(+)
+						and C.video_no = A.video_no
+						and A.creator_no = #{ownerNo}	
+						and A.video_status = 'enabled'
+						<if test="searchKeyword != null">
+						and (LOWER(A.video_title) like '%' || LOWER(#{searchKeyword}) || '%' or LOWER(A.video_detail) like '%' || LOWER(#{searchKeyword}) || '%')
+						</if>
+					)))
+		<where>
+			<if test="videosMin != null and videosMax != null">
+				rn &gt;= #{videosMin} and rn &lt; #{videosMax}
+			</if>
+		</where>
+
+ 	</select>
+ 	
+ 	<select id="getVideosInfoByMapLiked" parameterType="map" resultType="VideoSummary">
+ 		select
+ 			video_no 					as "video.no"
+			,creator_no 				as "video.creatorNo"
+			,video_title 				as "video.title"
+			,video_status 				as "video.status"
+			,create_date 				as "video.createDate"
+			,update_date 				as "video.updateDate"
+			,video_detail				as "video.detail"
+			,video_url					as "video.url"
+			,VIDEO_DURATION				as "video.duration"
+			,preview_a3_url				as "video.previewA3Url"
+			,EXTERNAL_LINK				as "video.externalLink"
+			,video_fps					as "video.fps"
+ 		from
+	 		(select
+				A.video_no 					
+				,A.creator_no 				
+				,A.video_title 			
+				,A.video_status 			
+				,A.create_date 				
+				,A.update_date 				
+				,A.video_detail				
+				,C.video_url			
+				,C.VIDEO_DURATION			
+				,C.preview_a3_url		
+				,C.EXTERNAL_LINK			
+				,C.video_fps				
+				<if test="criteria == null">
+				,row_number() over (order by A.create_date asc) as rn
+				</if>
+				<if test="criteria != null">
+					<choose>
+						<when test="criteria == 'hottest'">
+							,row_number() over (order by D.count desc) as rn
+						</when>
+						<when test="criteria == 'eldest'">
+							,row_number() over (order by A.create_date asc) as rn	
+						</when>
+						<when test="criteria == 'newest'">
+							,row_number() over (order by A.create_date desc) as rn	
+						</when>
+					</choose>
+				</if>
+			FROM
+				VIDEO_VOTE_HISTORY B, Videos A, video_meta C, (select
+																	count(*) as count, video_no
+																from
+																	VIDEO_VOTE_HISTORY
+																group by
+																	video_no) D
+			where
+				B.side = 'p' 
+				and B.user_no = #{ownerNo}
+				and B.VIDEO_NO = A.video_no
+				and A.video_no = C.video_no
+				and D.video_no = A.video_no
+				and A.video_status = 'enabled')
+		<where>
+			<if test="videosMin != null and videosMax != null">
+				rn &gt;= #{videosMin} and rn &lt; #{videosMax}
+			</if>
+		</where>
+ 	</select>
+ 	
+ 	<select id="getVideosInfoByMap" parameterType="map" resultType="VideoSummary">	
+ 		select
+ 			video_no 					as "video.no"
+			,creator_no 				as "video.creatorNo"
+			,video_title 				as "video.title"
+			,video_status 				as "video.status"
+			,create_date 				as "video.createDate"
+			,update_date 				as "video.updateDate"
+			,video_detail				as "video.detail"
+			,cnt						as "watchCount"
+			,video_url					as "video.url"
+			,VIDEO_DURATION				as "video.duration"
+			,preview_a3_url				as "video.previewA3Url"
+ 			,rn
+ 		from
+	 		(select
+		 		A.video_no 					
+				,A.creator_no 	
+				,A.video_title 				
+				,A.video_status 			
+				,A.create_date 			
+				,A.update_date 				
+				,A.video_detail			
+				,B.cnt					
+				,C.video_url				
+				,C.VIDEO_DURATION			
+				,C.preview_a3_url		
+				<if test="criteria == null">
+					,row_number() over (order by A.create_date asc) as rn
+				</if>
+				<if test="criteria != null">
+					<choose>
+						<when test="criteria == 'hottest'">
+							,row_number() over (order by B.cnt desc) as rn
+						</when>
+						<when test="criteria == 'eldest'">
+							,row_number() over (order by A.create_date asc) as rn	
+						</when>
+						<when test="criteria == 'newest'">
+							,row_number() over (order by A.create_date desc) as rn	
+						</when>
+					</choose>
+				</if>
+			from
+				videos A, (select 
+								count(user_no) as cnt, video_no
+							from 
+								WATCH_HISTORY
+							group by
+								video_no) B, video_meta C
+			where
+				A.VIDEO_NO = B.video_no(+)
+				and C.video_no = A.video_no
+				and A.creator_no = #{ownerNo}	
+				and A.video_status = 'enabled'
+				<if test="searchKeyword != null">
+				and (LOWER(A.video_title) like '%' || LOWER(#{searchKeyword}) || '%' or LOWER(A.video_detail) like '%' || LOWER(#{searchKeyword}) || '%')
+				</if>
+			)
+		<where>
+			<if test="videosMin != null and videosMax != null">
+				rn &gt;= #{videosMin} and rn &lt; #{videosMax}
+			</if>
+		</where>	
+ 	</select>
+ 	
+ 	<resultMap type="Subscription" id="subscriptionMap">
+ 		<result column="USER_NO" property="userNo"/>
+ 		<result column="OWNER_NO" property="ownerNo"/>
+ 		<result column="CHANNEL_NOTICE" property="notice"/>
+ 		<result column="CHANNEL_LONG_DETAIL" property="longDetail"/>
+ 		<result column="CHANNEL_IMG_URL" property="imgUrl"/>
+ 		<result column="CHANNEL_TITLE" property="title"/>
+ 		<result column="PROFILE_SMALL_IMG_URL" property="userImgUrl"/>
+ 		<association property="subscriptionCount" column="OWNER_NO" select="getSubscriptionCountByOwnerNo"></association>
+ 		<association property="videoCount" column="OWNER_NO" select="getVideoCountByCreatorNo"></association>
+ 	</resultMap>
+ 	<select id="getAllSubscribeByUserNo" parameterType="Integer" resultMap="subscriptionMap">
+ 		select
+			A.USER_NO				as USER_NO
+			,A.OWNER_NO				as OWNER_NO
+			,A.CHANNEL_NOTICE		as CHANNEL_NOTICE
+			,B.CHANNEL_LONG_DETAIL	as CHANNEL_LONG_DETAIL
+			,B.CHANNEL_IMG_URL		as CHANNEL_IMG_URL
+			,B.CHANNEL_TITLE		as CHANNEL_TITLE
+			,C.PROFILE_SMALL_IMG_URL as PROFILE_SMALL_IMG_URL
+		from
+			SUBSCRIPTIONS A, CHANNELS B, USERS C
+		where
+			A.OWNER_NO = B.OWNER_NO
+			and A.USER_NO = #{value}
+			and A.owner_NO = C.USER_NO
+ 	</select>
+ 	<select id="getVideoCountByCreatorNo" resultType="Integer" parameterType="Integer">
+ 		select
+			count(*) cnt
+		from
+			videos A, users B
+		where
+			A.CREATOR_NO = B.USER_NO
+			and B.user_no = #{value}
+ 	</select>
+ 	<select id="getSubscriptionCountByOwnerNo" resultType="Integer" parameterType="Integer">
+ 		select
+			count(*) cnt
+		from
+			SUBSCRIPTIONS
+		where
+			owner_no = #{value}
+ 	</select>
+ 	
+ 	<resultMap type="Subscription" id="subscriptionConditionMap">
+ 		<result column="USER_NO" property="userNo"/>
+ 		<result column="OWNER_NO" property="ownerNo"/>
+ 		<result column="CHANNEL_NOTICE" property="notice"/>
+ 		<result column="CHANNEL_LONG_DETAIL" property="longDetail"/>
+ 		<result column="CHANNEL_IMG_URL" property="imgUrl"/>
+ 		<result column="CHANNEL_TITLE" property="title"/>
+ 		<result column="USER_IMG_URL" property="userImgUrl"/>
+ 		<association property="subscriptionCount" column="OWNER_NO" select="getSubscriptionCountByOwnerNo"></association>
+ 		<association property="videoCount" column="OWNER_NO" select="getVideoCountByCreatorNo"></association>
+ 	</resultMap>
+ 	<select id="getSubscriptionByCondition" parameterType="map" resultMap="subscriptionConditionMap">
+ 		select
+			user_no					
+			,owner_no			
+			,channel_notice			
+			,channel_long_detail	
+			,channel_img_url	
+			,channel_title
+			,user_img_url
+		from
+			(select
+				A.USER_NO				as USER_NO
+				,A.OWNER_NO				as OWNER_NO
+				,A.CHANNEL_NOTICE		as CHANNEL_NOTICE
+				,B.CHANNEL_LONG_DETAIL	as CHANNEL_LONG_DETAIL
+				,B.CHANNEL_IMG_URL		as CHANNEL_IMG_URL
+				,B.CHANNEL_TITLE		as CHANNEL_TITLE
+				,C.PROFILE_SMALL_IMG_URL as USER_IMG_URL
+				,rownum as rn
+			from
+				SUBSCRIPTIONS A, CHANNELS B, USERS C
+			where
+				A.OWNER_NO = B.OWNER_NO
+				and A.USER_NO = #{userNo}
+				and A.owner_NO = C.USER_NO)
+		<where>
+			<if test="maxIndex != null">
+			rn &lt;= #{maxIndex}
+			</if>
+		</where>
+ 	</select>
+ 	
+	<select id="getPlaylistByCondition" parameterType="map" resultType="Playlist">
+		select
+			playlist_no			as no
+			,owner_no			as ownerNo
+			,playlist_title		as title
+			,playlist_contents	as contents
+			,playlist_status	as status
+			,playlist_rep_img	as img
+			,playlistCdate		as createDate
+			,update_date		as updateDate
+			,rn
+		from
+			(select			
+				playlist_no		
+				,owner_no		
+				,playlist_title			
+				,playlist_contents		
+				,playlist_status	
+				,playlist_rep_img	
+				,playlistCdate 
+				,update_date
+				<if test="criteria == null">
+				,row_number() over (order by update_date desc) as rn
+				</if>
+				<if test="criteria != null">
+					<choose>
+						<when test="criteria == 'recent'">
+							,row_number() over (order by update_date desc) as rn
+						</when>
+						<when test="criteria == 'eldest'">
+							,row_number() over (order by playlistCdate asc)	as rn
+						</when>
+						<when test="criteria == 'newest'">
+							,row_number() over (order by playlistCdate desc) as rn					
+						</when>
+					</choose>
+				</if>	
+			from
+				(select
+					B.playlist_no
+					,B.owner_no
+					,B.playlist_title
+					,B.playlist_contents
+					,B.playlist_status
+					,B.playlist_rep_img
+					,B.create_date	as playlistCdate
+					,B.UPDATE_DATE
+					,D.user_no
+					,D.user_email
+					,D.user_name
+					,D.user_nick
+					,D.user_pwd
+					,D.user_address
+					,D.user_short_introduce
+					,D.user_status
+					,D.user_phone
+					,D.user_gender
+					,D.user_birthday
+					,D.create_Date	as userCdate
+					,D.profile_big_img_url
+					,D.profile_small_img_url
+				from
+					playlists B, users D
+				where
+					B.owner_no = #{ownerNo}
+					and B.playlist_status = 'enabled'
+					and D.user_no = B.owner_no
+					<if test="playlistNo != null">
+					and B.playlist_no = #{playlistNo}
+					</if>
+					)			
+			)
+		<where>
+			<if test="min != null and max != null">
+				rn &gt;= #{min} and rn &lt; #{max}
+			</if>
+		</where>
+	</select>
+	<select id="getVideosByMap" parameterType="map" resultType="VideoSummary">
+		select
+			video_no				as "video.no"
+			,creator_no				as "video.creatorNo"
+			,SECONDARY_CATEGORY_NO	as "video.primaryCategoryNo"
+			,NEXT_VIDEO_NO			as "video.secondaryCategoryNo"
+			,VIDEO_TITLE			as "video.title"
+			,VIDEO_DETAIL			as "video.detail"
+			,VIDEO_STATUS			as "video.status"
+			,CREATE_DATE			as "video.createDate"
+			,update_date			as "video.updateDate"	
+			,video_url				as "video.url"
+			,VIDEO_DURATION			as "video.duration"
+			,preview_a3_url			as "video.previewA3Url"
+			,EXTERNAL_LINK			as "video.externalLink"
+			,video_fps				as "video.fps"
+		from
+			(select
+				C.video_no					
+				,C.creator_no				
+				,C.SECONDARY_CATEGORY_NO	
+				,C.NEXT_VIDEO_NO			
+				,C.VIDEO_TITLE				
+				,C.VIDEO_DETAIL				
+				,C.VIDEO_STATUS				
+				,C.CREATE_DATE				
+				,C.update_date				
+				,D.video_url				
+				,D.VIDEO_DURATION			
+				,D.preview_a3_url			
+				,D.EXTERNAL_LINK		
+				,D.video_fps			
+				<if test="criteria == null">
+				,row_number() over (order by C.create_date desc) as rn
+				</if>
+				<if test="criteria != null">
+					<choose>
+						<when test="criteria == 'newest'">
+							,row_number() over (order by C.create_date desc) as rn
+						</when>
+						<when test="criteria == 'eldest'">
+							,row_number() over (order by C.create_date asc) as rn
+						</when>
+						<when test="criteria == 'updated'">
+							,row_number() over (order by C.update_date desc) as rn
+						</when>
+					</choose>
+				</if>
+			from
+				playlists A, playlist_videos B, videos C, video_meta D
+			where
+				A.playlist_no = B.playlist_no
+				and C.video_no = B.video_no
+				and D.video_no = C.video_No
+				and A.PLAYLIST_NO = #{playlistNo}
+				and C.video_status = 'enabled')
+		<where>
+			<if test="playlistsMin != null and playlistsMax != null">
+				rn &gt;= #{playlistsMin} and rn &lt; #{playlistsMax}
+			</if>
+		</where>	
+	</select>
+	<select id="getVideoCountByPlaylistNo" parameterType="Integer" resultType="Integer">
+		select
+			count(C.video_no)
+		from
+			playlists A, playlist_videos B, videos C
+		where
+			A.playlist_no = B.playlist_no
+			and C.video_no = B.video_no
+			and A.PLAYLIST_NO = #{value}
+			and C.video_status = 'enabled'
+	</select>
+
+	<select id="getUserByNo" parameterType="Integer" resultType="User">
+		select
+		  USER_NO 					as "no"
+		  ,USER_EMAIL				as "email"
+		  ,USER_NAME				as "name"
+		  ,USER_NICK				as "nick"
+		  ,USER_PWD					as "password"
+		  ,USER_ADDRESS				as "address"
+		  ,USER_SHORT_INTRODUCE		as "shortIntroduce"
+		  ,USER_STATUS				as "status"
+		  ,USER_PHONE				as "phone"
+		  ,USER_GENDER				as "gender"
+		  ,USER_BIRTHDAY			as "birthday"
+		  ,CREATE_DATE				as "createDate"
+		  ,PROFILE_BIG_IMG_URL		as "profileBigImgUrl"
+		  ,PROFILE_SMALL_IMG_URL	as "profileSmallImgUrl"
+		  ,(select
+				count(*)
+			from
+				users A, channels B, subscriptions C
+			where
+				A.user_no = B.OWNER_NO
+				and B.owner_no = C.OWNER_NO
+				and A.user_no = #{value}
+			group by
+				A.user_no) 			as subscriptionCount
+		from
+		  	users
+		 where
+		 	user_no = #{value}
+	</select>
+	<select id="getPlaylistsByUserNo" parameterType="Integer" resultType="Playlist">
+		select
+			playlist_no					as "no"
+			,owner_no					as "ownerNo"
+			,playlist_title				as "title"
+			,playlist_contents			as "contents"
+			,playlist_status			as "status"
+			,PLAYLIST_REP_IMG			as "img"
+			,CREATE_DATE				as "createDate"
+		from
+			playlists
+		where
+			owner_no = #{value}
+			and playlist_status = 'enabled'
+	</select>
+	<select id="getVideosByUserNo" parameterType="Integer" resultType="VideoSummary">
+		select
+			  A.VIDEO_NO					as "video.no"	
+			  ,A.CREATOR_NO					as "video.creatorNo"	  
+			  ,A.PRIMARY_CATEGORY_NO		as "video.primaryCategoryNo"
+			  ,A.SECONDARY_CATEGORY_NO		as "video.secondaryCategoryNo"
+			  ,A.VIDEO_TITLE				as "video.title"
+			  ,A.VIDEO_DETAIL				as "video.detail"
+			  ,A.VIDEO_STATUS				as "video.status"
+			  ,A.CREATE_DATE				as "video.createDate"
+			  ,A.update_date				as "video.updateDate"
+			  ,B.cnt						as "watchCount"
+			  ,C.PREVIEW_A3_URL				as "video.previewA3Url"
+			  ,C.video_url					as "video.url"
+			  ,C.video_fps					as "video.fps"
+			  ,C.video_duration				as "video.duration"
+			  ,C.external_link				as "video.externalLink"
+		from	
+			videos A, (select
+								count(*) as cnt, video_no
+							from
+								watch_history
+							group by
+								video_no) B, video_meta C
+		where
+			A.video_no = B.video_no
+			and A.video_no = C.video_no
+			and A.creator_no = #{value}
+			and A.video_status = 'enabled'
+	</select>
+
+	<select id="getVideoLikeByVideoNo" resultType="Integer" parameterType="Integer">
+		select
+		 	count(*) as cnt
+		 from
+		 	video_vote_history
+		 where
+		 	video_no = #{value}
+		 	and side = 'p'
+	</select>
+	
+	<select id="getVideoDislikeByVideoNo" resultType="Integer" parameterType="Integer">
+		select
+		 	count(*) as cnt
+		 from
+		 	video_vote_history
+		 where
+		 	video_no = #{value}
+		 	and side = 'n'
+	</select>
+	
+	<select id="getViewCountByVideoNo" resultType="Integer" parameterType="Integer">
+		SELECT
+			count(*) as cnt
+		from
+			WATCH_HISTORY
+		where
+			video_no = #{value}
+	</select>
+
+
+	<resultMap type="CommunityWritings" id="CommunityWritingsMap">
+		<id property="no" column="WRITING_NO"/>
+		<result property="writerNo" column="WRITER_NO"/>
+		<result property="createDate" column="CREATE_DATE"/>
+		<result property="status" column="WRITING_STATUS"/>
+		<result property="contents" column="WRITING_CONTENTS"/>
+		<association property="user" column="writer_no" select="getUserByNo"></association>
+		<association property="commentCount" javaType="Integer" column="WRITING_NO" select="getCommunityCommentCountByWritingNo"></association>
+		<association property="likeCount" javaType="Integer" column="WRITING_NO" select="getCommunityLikeByWritingNo"></association>
+		<association property="dislikeCount" javaType="Integer" column="WRITING_NO" select="getCommunityDislikeByWritingNo"></association>
+		<association property="reportCount" javaType="Integer" column="WRITING_NO" select="getCommunityReportCountByWritingNo"></association>
+		<collection property="comments" select="getCommunityCommentsByWritingNo" column="WRITING_NO"></collection>
+	</resultMap>
+	<select id="getCommunityWritingsByOwnerNo" parameterType="Integer" resultMap="CommunityWritingsMap">
+		select
+			A.CREATE_DATE 	
+			,A.WRITING_NO	
+			,A.WRITER_NO		
+			,A.WRITING_STATUS		
+			,A.WRITING_CONTENTS			
+		from
+			CM_WRITINGS A
+		where
+			A.writer_no = #{value}
+		order by
+			CREATE_DATE desc
+	</select>
+	<select id="getCommunityLikeByWritingNo" resultType="Integer" parameterType="Integer">
+		select
+		 	count(*) as cnt
+		 from
+		 	CMW_VOTE_HISTORY
+		 where
+		 	WRITING_NO = #{value}
+		 	and side = 'p'
+	</select>
+	<select id="getCommunityDislikeByWritingNo" resultType="Integer" parameterType="Integer">
+		select
+		 	count(*) as cnt
+		 from
+		 	CMW_VOTE_HISTORY
+		 where
+		 	WRITING_NO = #{value}
+		 	and side = 'n'
+	</select>
+	<select id="getCommunityReportCountByWritingNo" resultType="Integer" parameterType="Integer">
+		select
+		 	count(*) as cnt
+		 from
+		 	CMW_REPORT_HISTORY
+		 where
+		 	WRITING_NO = #{value}
+	</select>
+	<select id="getCommunityCommentCountByWritingNo" resultType="Integer" parameterType="Integer">
+		select
+			count(*) as cnt
+		from
+			CM_WRITINGS A, CMW_COMMENTS B
+		where
+			A.WRITING_NO = B.WRITING_NO
+			and A.WRITING_NO = #{value}
+	</select>
+	
+	<resultMap type="CommunityComments" id="CommunityCommentsMap">
+		<id property="no" column="comment_no"/>
+		<result property="commenterNo" column="commenter_no"/>
+		<result property="createDate" column="create_date"/>
+		<result property="status" column="comment_status"/>
+		<result property="contents" column="comment_contents"/>
+		<association property="user" column="commenter_no" select="getUserByNo"></association>
+		<association property="commentLikeCount" select="getCommentLikeCountByCommentNo" column="comment_no"></association>
+		<association property="commentDislikeCount" select="getCommentDislikeCountByCommentNo" column="comment_no"></association>
+		<association property="commentReportStack" select="getCommentReportCountByCommentNo" column="comment_no"></association>
+		<collection property="replies" column="comment_no" select="getCommunityRepliesByCommentNo"></collection>
+	</resultMap>
+	<select id="getCommunityCommentsByWritingNo" parameterType="Integer" resultMap="CommunityCommentsMap">
+		select
+			A.comment_no
+			,A.writing_no
+			,A.commenter_no
+			,A.comment_contents
+			,A.comment_status
+			,A.create_date
+		from
+			cmw_comments A
+		where
+			A.writing_no = #{value}
+		order by
+			A.create_date desc
+	</select>
+	<select id="getCommentLikeCountByCommentNo" parameterType="Integer" resultType="Integer">
+		select
+			count(*) cnt
+		from
+			CMWC_VOTE_HISTORY C, CMW_COMMENTS D, CM_WRITINGS E
+		where
+			C.COMMENT_NO = D.COMMENT_NO
+			and E.WRITING_NO = D.WRITING_NO
+			and C.SIDE = 'p'
+			and D.COMMENT_NO = #{value}
+	</select>
+	<select id="getCommentDislikeCountByCommentNo" parameterType="Integer" resultType="Integer">
+		select
+			count(*) cnt
+		from
+			CMWC_VOTE_HISTORY C, CMW_COMMENTS D, CM_WRITINGS E
+		where
+			C.COMMENT_NO = D.COMMENT_NO
+			and E.WRITING_NO = D.WRITING_NO
+			and C.SIDE = 'n'
+			and D.COMMENT_NO = #{value}
+	</select>	
+	<select id="getCommentReportCountByCommentNo" parameterType="Integer" resultType="Integer">
+		select
+			count(*) cnt
+		from
+			CMWC_REPORT_HISTORY C, CMW_COMMENTS D, CM_WRITINGS E
+		where
+			C.COMMENT_NO = D.COMMENT_NO
+			and E.WRITING_NO = D.WRITING_NO
+			and D.comment_no = #{value}
+	</select>
+	
+	<resultMap type="CommunityReplies" id="CommunityRepliesMap">
+		<id property="no" column="reply_no"/>
+		<result property="replyerNo" column="replier_no"/>
+		<result property="createDate" column="create_date"/>
+		<result property="status" column="reply_status"/>
+		<result property="contents" column="reply_contents"/>
+		<association property="user" column="replier_no" select="getUserByNo"></association>
+		<association property="commentReplyLikeCount" select="getCommentReplyLikeCountByReplyNo" column="reply_no"></association>
+		<association property="commentReplyDislikeCount" select="getCommentReplyDislikeCountByReplyNo" column="reply_no"></association>
+		<association property="commentReplyReportStack" select="getCommentReplyReportCountByReplyNo" column="reply_no"></association>
+	</resultMap>
+	<select id="getCommunityRepliesByCommentNo" parameterType="Integer" resultMap="CommunityRepliesMap">
+		select
+			reply_no
+			,comment_no
+			,replier_no
+			,reply_contents
+			,reply_status
+			,create_date
+		from
+			cmwc_replies
+		where
+			comment_no = #{value}
+	</select>
+	<select id="getCommentReplyLikeCountByReplyNo" parameterType="Integer" resultType="Integer">
+		select
+			count(*) cnt
+		from
+			CMWCR_VOTE_HISTORY F, CMWC_REPLIES E
+		where
+			F.REPLY_NO = E.REPLY_NO
+			and F.SIDE = 'p'
+			and F.REPLY_NO = #{value} 
+	</select>
+	<select id="getCommentReplyDislikeCountByReplyNo" parameterType="Integer" resultType="Integer">
+		select
+			count(*)
+		from
+			CMWCR_VOTE_HISTORY F, CMWC_REPLIES E
+		where
+			F.REPLY_NO = E.REPLY_NO
+			and F.SIDE = 'n'
+			and F.REPLY_NO = #{value} 
+	</select>
+	<select id="getCommentReplyReportCountByReplyNo" parameterType="Integer" resultType="Integer">
+		select
+			count(*)
+		from
+			CMWCR_REPORT_HISTORY G, CMWC_REPLIES E
+		where
+			G.REPLY_NO = E.REPLY_NO
+			and E.REPLY_NO = #{value} 
+	</select>
+
+	<select id="getChannelInfoByCreatorNo" parameterType="Integer" resultType="ChannelSummary">
+		select
+			A.owner_no				as ownerNo
+			,A.channel_title		as title
+			,A.CHANNEL_LONG_DETAIL	as longDetail
+			,A.CHANNEL_IMG_URL		as imgUrl
+			,B.user_no				as userNo
+			,C.PROFILE_SMALL_IMG_URL as userImgUrl
+		from
+			channels A, recommend_channels B, users C
+		where
+			A.OWNER_NO = B.owner_no
+			and B.USER_NO = #{value}
+			and C.USER_NO = B.owner_NO 
+	</select>
+	
+	<select id="getSubscribeCountByOwnerNo" parameterType="Integer" resultType="Integer">
+		select
+			count(*) cnt
+		from
+			channels A, users B, SUBSCRIPTIONS C
+		where 
+			A.OWNER_NO = B.user_no
+			and C.OWNER_NO = B.user_no
+			and B.user_no = #{value}
+	</select>
+	
+	<select id="getSubscribingOwnerNoByUserNo" parameterType="Integer" resultType="Integer">
+		select
+			owner_no
+		from
+			SUBSCRIPTIONS
+		where
+			user_no = #{value}
+	</select>
+	
+	<select id="getChannelInfoByOwnerNo" parameterType="Integer" resultType="ChannelSummary">
+		select
+			B.USER_NO							as ownerNo
+			,B.create_date						as createDate
+			,B.PROFILE_SMALL_IMG_URL			as userImgUrl
+			,A.CHANNEL_IMG_URL					as imgUrl
+			,A.CHANNEL_LONG_DETAIL				as longDetail
+			,A.CHANNEL_TITLE					as title
+			,(select
+					count(*)
+				from 
+					videos A, watch_history B
+				where 
+					A.VIDEO_NO = B.VIDEO_NO
+					and A.CREATOR_NO = #{value}) as totalViewCount
+		from
+			channels A, users B
+		where
+			A.OWNER_NO = B.user_no
+			and A.owner_no = #{value}
+	</select>
+
+	<select id="getChannelNoticeByMap" parameterType="map" resultType="ChannelNoticeSummary">
+		select
+			A.CHANNEL_NOTICE	as notice
+			,A.user_no			as userNo
+			,B.owner_no			as ownerNo
+		from
+			SUBSCRIPTIONS A, CHANNELS B
+		where
+			A.OWNER_NO = B.OWNER_NO
+			and A.USER_NO = #{userNo}
+			and B.OWNER_NO = #{creatorNo}
+	</select>
+	
+	<update id="setChannelNoticeByMap" parameterType="map">
+		update
+			SUBSCRIPTIONS
+		set
+			<choose>
+				<when test="noticeStatus == true">
+					CHANNEL_NOTICE = 'off'
+				</when>
+				<otherwise>
+					CHANNEL_NOTICE = 'on'
+				</otherwise>
+			</choose>	
+		where
+			user_no = #{userNo}
+			and OWNER_NO = #{creatorNo}
+	</update>
+	
+	<insert id="setNewReport" parameterType="map">
+		<choose>
+			<when test="which == 'writing'">
+				insert into
+					cmw_report_history (writing_no, user_no, report_contents)
+				values
+					(#{writingNo}, #{userNo}, #{reportContents})
+			</when>
+			<when test="which == 'comment'">
+				insert into
+					cmwc_report_history (user_no, comment_no, report_contents)
+				values
+					(#{userNo}, #{comment_no}, #{reportContents})
+			</when>
+			<when test="which == 'reply'">
+				insert into
+					cmwcr_report_history (user_no, reply_no, report_contents)
+				values
+					(#{userNo}, #{replyNo}, #{reportContents})
+			</when>
+			<when test="which == 'video'">
+				insert into
+					video_report_history (user_no, video_no, report_contents)
+				values
+					(#{userNo}, #{videoNo}, #{reportContents})
+			</when>
+			<when test="which == 'channel'">
+				insert into
+					ch_report_history (user_no, owner_no, report_contents)
+				values
+					(#{userNo}, #{ownerNo}, #{reportContents})					
+			</when>
+		</choose>		
+	</insert>
+	
+	<insert id="setNewComment" parameterType="map">
+		insert into
+			cmw_comments (comment_no, writing_no, commenter_no, comment_contents)
+		values
+			(cmw_comments_seq.nextval, #{writingNo}, #{commenterNo}, #{commentContents})
+	</insert>
+	
+	<update id="updateComment" parameterType="map">
+		update
+			CMW_COMMENTS
+		set
+			comment_contents = #{commentContents}
+		where
+			comment_no = #{commentNo}
+			and WRITING_NO = #{writingNo}
+			and COMMENTER_NO = #{commenterNo}
+	</update>
+	
+	<insert id="setNewReply" parameterType="map">
+		insert into
+			cmwc_replies (reply_no, comment_no, replier_no, reply_contents)
+		values
+			(cmwc_replies_seq.nextval, #{targetNo}, #{replierNo}, #{replyContents})
+	</insert>
+	
+	<update id="updateReply" parameterType="map">
+		update
+			cmwc_replies
+		set
+			reply_contents = #{replyContents}
+		where
+			reply_no = #{targetNo}
+			and comment_no = #{commentNo}
+			and replier_no = #{replierNo}
+	</update>
+	
+	<select id="selectThumbsHistory" parameterType="map" resultType="Integer">
+		<choose>
+			<when test="which == 'writing'">
+				select
+					count(*) cnt
+				from
+					cmw_vote_history
+				where
+					writing_no = #{targetNo}
+					and user_no = #{userNo}
+			</when>
+			<when test="which == 'comment'">
+				select
+					count(*) cnt
+				from
+					cmwc_vote_history
+				where 
+					comment_no = #{targetNo}
+					and user_no = #{userNo}
+			</when>
+			<when test="which == 'reply'">
+				select
+					count(*) cnt
+				from
+					cmwcr_vote_history
+				where 
+					reply_no = #{targetNo}
+					and user_no = #{userNo}
+			</when>
+		</choose>
+	</select>
+	
+	<insert id="insertThumbsHistory" parameterType="map">
+		<choose>
+			<when test="which == 'writing'">
+				insert into
+					cmw_vote_history (writing_no, user_no, side)
+				values
+					(#{targetNo}, #{userNo}, #{side})
+			</when>
+			<when test="which == 'comment'">
+				insert into
+					cmwc_vote_history (comment_no, user_no, side)
+				values
+					(#{targetNo}, #{userNo}, #{side})
+			</when>
+			<when test="which == 'reply'">
+				insert into
+					cmwcr_vote_history (reply_no, user_no, side)
+				values
+					(#{targetNo}, #{userNo}, #{side})
+			</when>
+		</choose>
+	</insert>
+	
+	<delete id="deleteThumbsHistory" parameterType="map">
+		<choose>
+			<when test="which == 'writing'">
+				delete from
+					cmw_vote_history
+				where
+					writing_no = #{targetNo}
+					and user_no = #{userNo}
+			</when>
+			<when test="which == 'comment'">
+				delete from
+					cmwc_vote_history
+				where
+					comment_no = #{targetNo}
+					and user_no = #{userNo}
+			</when>
+			<when test="which == 'reply'">
+				delete from
+					cmwcr_vote_history
+				where
+					reply_no = #{targetNo}
+					and user_no = #{userNo}
+			</when>
+		</choose>	
+	</delete>
+	
+	<update id="updateThumbsHistory" parameterType="map">
+		<choose>
+			<when test="which == 'writing'">
+				update
+					cmw_vote_history
+				set
+					side = #{side}
+				where
+					writing_no = #{targetNo}
+					and user_no = #{userNo}
+			</when>
+			<when test="which == 'comment'">
+				update
+					cmwc_vote_history
+				set
+					side = #{side}
+				where
+					comment_no = #{targetNo}
+					and user_no = #{userNo}
+			</when>
+			<when test="which == 'reply'">
+				update
+					cmwcr_vote_history
+				set
+					side = #{side}
+				where
+					reply_no = #{targetNo}
+					and user_no = #{userNo}
+			</when>
+		</choose>
+	</update>
+	
+	<select id="getSubscribeByUserandOwnerNo" parameterType="map" resultType="Hashmap">
+		select
+			count(*)  as "cnt"
+		from
+			subscriptions
+		where
+			user_no = #{userNo}
+			and owner_no = #{ownerNo}
+	</select>
+	
+	<insert id="addNewSubscribe" parameterType="map">
+		insert into
+			subscriptions (user_no, owner_no)
+		values
+			(#{userNo}, #{ownerNo})
+	</insert>
+	
+	<delete id="deleteSubscribe" parameterType="map">
+		delete from 
+			SUBSCRIPTIONS
+		where
+			user_no = #{userNo}
+			and owner_no = #{ownerNo}
+	</delete>
+	
+	<select id="getPlaylistVideoLastOrder" parameterType="Integer" resultType="Integer">
+		select
+			max(video_order)+1
+		from
+			playlist_videos
+		where
+			playlist_no = #{value}
+	</select>
+	<insert id="addVideoToPlaylist" parameterType="map">
+		insert into
+			playlist_videos(playlist_no, video_no, video_order)
+		values
+			(#{playlistNo}, #{videoNo}, #{videoOrder})
+	</insert>
+	
+	<select id="getWatchLaterVideoNo" parameterType="Integer" resultType="Integer">
+		select
+			video_no	as "videoNo"
+		from
+			watch_later
+		where
+			user_no = #{userNo}
+	</select>
+	<insert id="addToWatchLater" parameterType="map">
+		insert into
+			watch_later(user_no, video_no)
+		values
+			(#{userNo}, #{videoNo})
+	</insert>
+	
+	<select id="getVideoWatchCount" parameterType="Integer" resultType="Integer">
+		select
+			count(*) cnt
+		from
+			watch_history
+		where
+			video_no = #{value}
+	</select>
+	
+	<select id="getVoteHistory" parameterType="map" resultType="History">
+		<choose>
+			<when test="which == 'writing'">
+				select 
+					writing_no 		as targetNo
+					,user_no		as userNo
+					,side			as voteSide
+				from
+					cmw_vote_history
+				where
+					user_no = #{userNo}
+					and writing_no = #{targetNo}
+			</when>
+			<when test="which == 'comment'">
+				select 
+					user_no			as userNo
+					,comment_no		as targetNo
+					,side			as voteSide
+				from
+					cmwc_vote_history
+				where
+					user_no = #{userNo}
+					and comment_no = #{targetNo}
+			</when>
+			<when test="which == 'reply'">
+				select
+					user_no			as userNo
+					,reply_no		as targetNo
+					,side			as voteSide
+				from
+					cmwcr_vote_history
+				where
+					user_no = #{userNo}
+					and reply_no = #{targetNo}
+			</when>
+		</choose>
+	</select>
+	
+	<select id="getUnsightVideoCount" parameterType="map" resultType="Integer">	
+		select
+			count(*) cnt
+		from
+			channels A, playlists B, playlist_videos C, videos D
+		where
+			A.OWNER_NO = B.OWNER_NO
+			and B.PLAYLIST_NO = C.PLAYLIST_NO
+			and C.VIDEO_NO = D.VIDEO_NO
+			and A.OWNER_NO = #{ownerNo}
+			and D.CREATE_DATE &gt; (select
+										max(create_date) lastdate
+									from
+										WATCH_HISTORY
+									where
+										user_no = #{userNo})
+	</select>
+	
+	<insert id="insertNewWritings" parameterType="map">
+		insert into
+			cm_writings (writing_no, writer_no, writing_contents)
+		values
+			(cm_writings_seq.nextval, #{writerNo}, #{writingContents})
+	</insert>
+	
+	<update id="removeWriting" parameterType="map">
+		update
+			cm_writings
+		set
+			writing_status = #{status}
+		where
+			writing_no = #{writingNo}
+	</update>
+ </mapper>

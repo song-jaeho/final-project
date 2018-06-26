@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+ <mapper namespace="kr.co.ducktube.dao.HomeDao">
+ 
+ 	<update id="playlistPreviewUpdate" parameterType="HomeCriteria">
+ 		update playlists 
+		set playlist_rep_img = #{preview}
+		where playlist_no = #{playlistNo}
+ 	</update>
+ 
+ 	<insert id="addPlaylistVideo" parameterType="HomeCriteria">
+ 		insert into playlist_videos (playlist_no, video_no, video_order)
+		values (#{playlistNo}, #{videoNo}, #{videoCount})
+ 	</insert>
+ 	
+ 	<select id="getPlaylistVideoCount" parameterType="int" resultType="Integer">
+ 		select  
+ 			count(*)
+		from playlist_videos 
+		group by playlist_no
+		having playlist_no = #{value}
+ 	</select>
+ 	
+ 	<select id="checkPlaylistVideo" parameterType="HomeCriteria" resultType="LibrarySummary">
+ 		select 
+ 			playlist_no as playlistNo, 
+ 			video_no as videoNo
+		from playlist_videos 
+		where playlist_no = #{playlistNo} and video_no = #{videoNo}
+ 	</select>
+ 
+ 	<insert id="addPlaylist" parameterType="HomeCriteria">
+ 		insert into playlists (playlist_no, owner_no, playlist_title, playlist_status)
+		values (playlists_seq.nextval, #{userNo}, #{playlistName}, #{playlistStatus})
+ 	</insert>
+ 
+ 	<insert id="addWatchLater" parameterType="HomeCriteria">
+ 		insert into watch_later (user_no, video_no, create_date)
+		values ( #{userNo}, #{videoNo}, sysdate)
+ 	</insert>
+ 
+ 	<select id="checkWatchLater" parameterType="HomeCriteria" resultType="LibrarySummary">
+ 		select 
+ 			WL.user_no as userNo, 
+ 			WL.video_no as videoNo, 
+ 			V.video_title as title
+		from 
+			watch_later WL, 
+			videos V 
+		where 
+			WL.video_no = V.video_no 
+			and WL.user_no = #{userNo} 
+			and V.video_no = #{videoNo}
+ 	</select>
+ 
+ 	<select id="getPopularList" parameterType="LibraryCriteria" resultType="PopularListSummary">
+ 		select
+			R.video_title as title,
+			R.video_detail as detail, 
+			R.preview_a2_url as previewA2Url, 
+			R.video_duration as duration, 
+			R.user_nick nick, 
+			R.user_no as userNo,
+			R.video_no as no, 
+			R.whct views, 
+			R.create_date as createDate
+		from
+			(select V.video_no, V.video_title, V.video_detail, VM.preview_a2_url, VM.video_duration, U.user_nick, U.user_no,
+					row_number() over(order by WCT.whct desc) as rk, WCT.whct, V.create_date
+			from 
+				videos V, 
+				video_meta VM, 
+				users U,
+				(select video_no, count(*) whct
+				from watch_history 
+				group by video_no) WCT
+			where
+				V.video_no = VM.video_no 
+				and U.user_no = V.creator_no 
+				and WCT.video_no = V.video_no
+				and V.video_no = WCT.video_no
+				and V.video_status = 'enabled') R
+		where R.rk &lt;= #{endIndex} and R.rk &gt;= #{beginIndex}
+		order by R.rk asc
+ 	</select>
+ 
+	<select id="getUserByEmail" parameterType="string" resultType="User">
+		select
+			user_no as no,
+			user_email as email,
+			user_name as name,
+			user_nick as nick,
+			user_pwd as password,
+			user_address as shortIntroduce,
+			user_short_introduce as address,
+			user_status as status,
+			user_phone as phone,
+			user_gender as gender,
+			user_birthday as birthday,
+			create_date as createDate,
+			profile_big_img_url as profileBigImgUrl,
+			profile_small_img_url as profileSmallImgUrl
+		from 
+			users
+		where 
+			user_email = #{value}
+	</select>
+
+ </mapper>
